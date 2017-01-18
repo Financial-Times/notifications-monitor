@@ -1,0 +1,14 @@
+<configuration>
+    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%level %d{HH:mm:ss} %logger{15} - %message%n%xException{5}</pattern>
+        </encoder>
+    </appender>
+
+    <logger name="com.ft.notificationsmonitor" level="DEBUG" />
+    <!--<logger name="akka" level="DEBUG" />-->
+
+    <root level="ERROR">
+        <appender-ref ref="STDOUT" />
+    </root>
+</configuration>
