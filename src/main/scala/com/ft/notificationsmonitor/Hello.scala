@@ -5,16 +5,16 @@ import java.io.File
 import akka.Done
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
-import akka.http.scaladsl.model.{HttpHeader, HttpRequest, HttpResponse, StatusCodes}
+import akka.http.scaladsl.model.HttpRequest
+import akka.http.scaladsl.model.headers._
 import akka.stream.scaladsl.{Keep, Sink, Source}
 import akka.stream.{ActorMaterializer, ActorMaterializerSettings, KillSwitches}
 import akka.util.ByteString
-import org.slf4j.LoggerFactory
-import akka.http.scaladsl.model.headers._
 import com.typesafe.config.ConfigFactory
+import org.slf4j.LoggerFactory
 
-import scala.concurrent.{Await, Promise}
 import scala.concurrent.duration._
+import scala.concurrent.{Await, Promise}
 import scala.util.{Failure, Success}
 
 object Hello extends App {
@@ -53,12 +53,23 @@ object Hello extends App {
     dataBytes
       .viaMat(KillSwitches.single)(Keep.right)
       .fold(ByteString("")){ (acc, next) =>
-        if (next.equals(ByteString('\n'))) {
-          logger.info(acc.utf8String)
-          ByteString("")
-        } else {
-          System.out.print((next ++ ByteString("|")).utf8String)
-          acc ++ next
+        val nextString = next.utf8String
+        nextString.lastIndexOf("\n\n") match {
+          case -1 =>
+            System.out.print(nextString + "|")
+            acc ++ next
+          case i =>
+            val lines = nextString.split("\n\n").toList
+            if (nextString.length - 2 == i) {
+              lines.map(_.stripPrefix("data: [").stripSuffix("]")).foreach {
+                case "" => logger.info("heartbeat")
+                case s => logger.info(s)
+              }
+              ByteString("")
+            } else {
+              lines.dropRight(1).foreach(l => logger.info(l))
+              ByteString(lines.last)
+            }
         }
       }
       .toMat(Sink.ignore)(Keep.left)
