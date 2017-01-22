@@ -2,7 +2,7 @@ package com.ft.notificationsmonitor
 
 import akka.Done
 import akka.actor.{Actor, PoisonPill, Props}
-import akka.stream.{ActorMaterializer, ActorMaterializerSettings, KillSwitches}
+import akka.stream.{ActorMaterializer, KillSwitches}
 import akka.stream.scaladsl.{Keep, Sink, Source}
 import akka.util.ByteString
 import org.slf4j.LoggerFactory
@@ -17,47 +17,51 @@ class Reader extends Actor {
   implicit private val ec = context.dispatcher
   implicit private val mat = ActorMaterializer()
 
-  private val killPromise = Promise[Done]()
+  private val willStopStreamP = Promise[Done]()
 
   override def receive: Receive = {
     case Read(source) =>
-      logger.debug("Read(source)")
-      val killSwitch = consumeBodyByPrinting(source)
-      killPromise.future.onComplete { _ =>
+      val (killSwitch, doneF) = consumeBodyStream(source)
+
+      willStopStreamP.future.onComplete { _ =>
         killSwitch.shutdown()
-        logger.debug("killing myself")
         self ! PoisonPill
       }
-      logger.debug("after Read(source) actor ready for other messages")
+
+      doneF.onComplete { _ =>
+        context.parent ! StreamEnded
+      }
 
     case CancelStreams =>
-      killPromise.complete(Success(Done))
+      willStopStreamP.complete(Success(Done))
   }
 
-  private def consumeBodyByPrinting(body: Source[ByteString, Any]) = {
+  private def consumeBodyStream(body: Source[ByteString, Any]) = {
     body.viaMat(KillSwitches.single)(Keep.right)
-      .fold(ByteString("")){ (acc, next) =>
-        val nextString = next.utf8String
-        nextString.lastIndexOf("\n\n") match {
-          case -1 =>
-            System.out.print(nextString + "|")
-            acc ++ next
-          case i =>
-            val lines = nextString.split("\n\n").toList
-            if (nextString.length - 2 == i) {
-              lines.map(_.stripPrefix("data: [").stripSuffix("]")).foreach {
-                case "" => logger.info("heartbeat")
-                case s => logger.info(s)
-              }
-              ByteString("")
-            } else {
-              lines.dropRight(1).foreach(l => logger.info(l))
-              ByteString(lines.last)
-            }
-        }
-      }
-      .toMat(Sink.ignore)(Keep.left)
+      .fold(ByteString(""))(foldPerLine)
+      .toMat(Sink.ignore)(Keep.both)
       .run()
+  }
+
+  private def foldPerLine(acc: ByteString, next: ByteString) = {
+    val nextString = next.utf8String
+    nextString.lastIndexOf("\n\n") match {
+      case -1 =>
+        System.out.print(nextString + "|")
+        acc ++ next
+      case i =>
+        val lines = nextString.split("\n\n").toList
+        if (nextString.length - 2 == i) {
+          lines.map(_.stripPrefix("data: [").stripSuffix("]")).foreach {
+            case "" => logger.info("heartbeat")
+            case s => logger.info(s)
+          }
+          ByteString("")
+        } else {
+          lines.dropRight(1).foreach(l => logger.info(l))
+          ByteString(lines.last)
+        }
+    }
   }
 }
 

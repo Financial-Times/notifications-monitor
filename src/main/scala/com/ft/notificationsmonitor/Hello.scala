@@ -4,7 +4,6 @@ import java.io.File
 
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
-import akka.stream.{ActorMaterializer, ActorMaterializerSettings}
 import com.typesafe.config.ConfigFactory
 import org.slf4j.LoggerFactory
 
@@ -26,9 +25,9 @@ object Hello extends App {
   val (username, password) = (sensitiveConfig.getString("basic-auth.username"),
     sensitiveConfig.getString("basic-auth.password"))
 
-  val connector = sys.actorOf(Connector.props((username, password)))
+  val connector = sys.actorOf(Connector.props("localhost", 8080, "/content/notifications-push", (username, password)))
 
-  connector ! Connect("/content/notifications-push")
+  connector ! Connect
 
   private def shutdown() = {
     logger.info("Exiting...")
