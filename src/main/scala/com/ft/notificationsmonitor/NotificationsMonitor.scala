@@ -10,7 +10,7 @@ import org.slf4j.LoggerFactory
 import scala.concurrent.duration._
 import scala.concurrent.Await
 
-object Hello extends App {
+object NotificationsMonitor extends App {
 
   private val logger = LoggerFactory.getLogger(getClass)
   implicit private val sys = ActorSystem("notifications-monitor")

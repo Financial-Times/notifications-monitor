@@ -4,11 +4,29 @@
             <pattern>%level %d - %message%n%xException{5}</pattern>
         </encoder>
     </appender>
-
-    <logger name="com.ft.notificationsmonitor" level="DEBUG" />
-    <!--<logger name="akka" level="DEBUG" />-->
-
+    <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>logs/notifications-monitor.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>logs/notifications-monitor-%d{yyyy-MM-dd}-%i.log</fileNamePattern>
+            <timeBasedFileNamingAndTriggeringPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
+                <maxFileSize>5MB</maxFileSize>
+            </timeBasedFileNamingAndTriggeringPolicy>
+            <maxHistory>60</maxHistory>
+        </rollingPolicy>
+        <encoder>
+            <charset>UTF-8</charset>
+            <pattern>level=%level date="%d" %message%n%xException{5}</pattern>
+        </encoder>
+    </appender>
+    <logger name="com.ft.notificationsmonitor" level="DEBUG" additivity="false">
+        <appender-ref ref="STDOUT" />
+        <appender-ref ref="FILE" />
+    </logger>
+    <logger name="com.ft.notificationsmonitor.producer" level="DEBUG" additivity="false">
+        <appender-ref ref="STDOUT" />
+    </logger>
     <root level="ERROR">
         <appender-ref ref="STDOUT" />
     </root>
+    <statusListener class="ch.qos.logback.core.status.NopStatusListener" />
 </configuration>
