@@ -10,7 +10,7 @@ import org.slf4j.LoggerFactory
 import scala.concurrent.Promise
 import scala.util.Success
 
-class Reader extends Actor {
+class PushReader extends Actor {
 
   private val logger = LoggerFactory.getLogger(getClass)
 
@@ -65,9 +65,9 @@ class Reader extends Actor {
   }
 }
 
-object Reader {
+object PushReader {
 
-  def props = Props(new Reader())
+  def props = Props(new PushReader())
 }
 
 case class Read(body: Source[ByteString, Any])

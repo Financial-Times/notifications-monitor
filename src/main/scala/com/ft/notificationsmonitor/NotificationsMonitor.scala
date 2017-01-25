@@ -25,13 +25,13 @@ object NotificationsMonitor extends App {
   val (username, password) = (sensitiveConfig.getString("basic-auth.username"),
     sensitiveConfig.getString("basic-auth.password"))
 
-  val connector = sys.actorOf(Connector.props("localhost", 8080, "/content/notifications-push", (username, password)))
+  val pushConnector = sys.actorOf(PushConnector.props("localhost", 8080, "/content/notifications-push", (username, password)))
 
-  connector ! Connect
+  pushConnector ! Connect
 
   private def shutdown() = {
     logger.info("Exiting...")
-    connector ! CancelStreams
+    pushConnector ! CancelStreams
     Await.ready(
       Http().shutdownAllConnectionPools()
         .flatMap(_ => sys.terminate()), 5 seconds

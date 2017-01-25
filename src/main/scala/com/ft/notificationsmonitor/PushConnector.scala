@@ -14,10 +14,10 @@ import org.slf4j.LoggerFactory
 import scala.concurrent.duration._
 import scala.util.{Failure, Success}
 
-class Connector(private val hostname: String,
-                private val port: Int,
-                private val uriToConnect: String,
-                private val credentials: (String, String)) extends Actor {
+class PushConnector(private val hostname: String,
+                    private val port: Int,
+                    private val uriToConnect: String,
+                    private val credentials: (String, String)) extends Actor {
 
   implicit private val sys = context.system
   implicit private val ec = context.dispatcher
@@ -25,7 +25,7 @@ class Connector(private val hostname: String,
 
   private val logger = LoggerFactory.getLogger(getClass)
   private val connectionFlow = Http().outgoingConnection(hostname, port)
-  private var reader = context.actorOf(Reader.props)
+  private var reader = context.actorOf(PushReader.props)
 
   override def receive: Receive = {
     case Connect =>
@@ -44,7 +44,7 @@ class Connector(private val hostname: String,
             logger.warn("Retrying in a few moments...")
             context.system.scheduler.scheduleOnce(5 seconds, self, Connect)
           } else {
-            reader = context.actorOf(Reader.props, "reader-" + ZonedDateTime.now().format(DateTimeFormatter.ISO_INSTANT))
+            reader = context.actorOf(PushReader.props, "reader-" + ZonedDateTime.now().format(DateTimeFormatter.ISO_INSTANT))
             reader ! Read(response.entity.dataBytes)
           }
       }
@@ -57,10 +57,10 @@ class Connector(private val hostname: String,
   }
 }
 
-object Connector {
+object PushConnector {
 
   def props(hostname: String, port: Int, uri: String, credentials: (String, String)) =
-    Props(new Connector(hostname, port, uri, credentials))
+    Props(new PushConnector(hostname, port, uri, credentials))
 }
 
 case object Connect
