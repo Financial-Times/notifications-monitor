@@ -5,6 +5,8 @@ import akka.actor.{Actor, PoisonPill, Props}
 import akka.stream.{ActorMaterializer, KillSwitches}
 import akka.stream.scaladsl.{Keep, Sink, Source}
 import akka.util.ByteString
+import com.ft.notificationsmonitor.PushConnector.StreamEnded
+import com.ft.notificationsmonitor.PushReader.Read
 import org.slf4j.LoggerFactory
 
 import scala.concurrent.Promise
@@ -32,7 +34,7 @@ class PushReader extends Actor {
         context.parent ! StreamEnded
       }
 
-    case CancelStreams =>
+    case PushReader.CancelStreams =>
       willStopStreamP.complete(Success(Done))
   }
 
@@ -68,8 +70,8 @@ class PushReader extends Actor {
 object PushReader {
 
   def props = Props(new PushReader())
+
+  case class Read(body: Source[ByteString, Any])
+
+  case object CancelStreams
 }
-
-case class Read(body: Source[ByteString, Any])
-
-case object CancelStreams

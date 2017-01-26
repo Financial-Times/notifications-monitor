@@ -4,6 +4,9 @@ import java.io.File
 
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
+import com.ft.notificationsmonitor.PullConnector.RequestSinceLast
+import com.ft.notificationsmonitor.PushConnector.Connect
+import com.ft.notificationsmonitor.PushReader.CancelStreams
 import com.typesafe.config.ConfigFactory
 import org.slf4j.LoggerFactory
 
@@ -22,15 +25,18 @@ object NotificationsMonitor extends App {
 
   scala.sys addShutdownHook shutdown
 
-  val (username, password) = (sensitiveConfig.getString("basic-auth.username"),
+  private val (username, password) = (sensitiveConfig.getString("basic-auth.username"),
     sensitiveConfig.getString("basic-auth.password"))
 
-  val pushConnector = sys.actorOf(PushConnector.props("localhost", 8080, "/content/notifications-push", (username, password)))
+  private val pushConnector = sys.actorOf(PushConnector.props("localhost", 8080, "/content/notifications-push", (username, password)))
+  private val pullConnector = sys.actorOf(PullConnector.props("pre-prod-uk-up.ft.com", 443, "/content/notifications", (username, password)))
 
   pushConnector ! Connect
+  private val pullSchedule = sys.scheduler.schedule(0 seconds, 10 seconds, pullConnector, RequestSinceLast)
 
   private def shutdown() = {
     logger.info("Exiting...")
+    pullSchedule.cancel()
     pushConnector ! CancelStreams
     Await.ready(
       Http().shutdownAllConnectionPools()

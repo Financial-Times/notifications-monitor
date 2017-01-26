@@ -9,6 +9,8 @@ import akka.http.scaladsl.model.{HttpRequest, StatusCodes}
 import akka.http.scaladsl.model.headers.{Authorization, BasicHttpCredentials}
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Sink, Source}
+import com.ft.notificationsmonitor.PushConnector.{Connect, StreamEnded}
+import com.ft.notificationsmonitor.PushReader.{CancelStreams, Read}
 import org.slf4j.LoggerFactory
 
 import scala.concurrent.duration._
@@ -39,12 +41,12 @@ class PushConnector(private val hostname: String,
           logger.warn("Failed request. Retrying in a few moments...", exception)
           context.system.scheduler.scheduleOnce(5 seconds, self, Connect)
         case Success(response) =>
-          logger.info(response.status.value)
+          logger.info("Connected to push feed. host=%s status=%d", response.status.value)
           if (!response.status.equals(StatusCodes.OK)) {
             logger.warn("Retrying in a few moments...")
             context.system.scheduler.scheduleOnce(5 seconds, self, Connect)
           } else {
-            reader = context.actorOf(PushReader.props, "reader-" + ZonedDateTime.now().format(DateTimeFormatter.ISO_INSTANT))
+            reader = context.actorOf(PushReader.props, "push-reader-" + ZonedDateTime.now().format(DateTimeFormatter.ISO_INSTANT))
             reader ! Read(response.entity.dataBytes)
           }
       }
@@ -61,8 +63,8 @@ object PushConnector {
 
   def props(hostname: String, port: Int, uri: String, credentials: (String, String)) =
     Props(new PushConnector(hostname, port, uri, credentials))
+
+  case object Connect
+
+  case object StreamEnded
 }
-
-case object Connect
-
-case object StreamEnded
