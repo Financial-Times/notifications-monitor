@@ -11,3 +11,5 @@ libraryDependencies ++= Seq(
   "org.slf4j" % "slf4j-api" % "1.7.22",
   "ch.qos.logback" % "logback-classic" % "1.1.8"
   )
+
+mainClass in (Compile, run) := Some("com.ft.notificationsmonitor.NotificationsMonitor")
