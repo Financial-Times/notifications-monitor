@@ -17,22 +17,21 @@ object NotificationsMonitor extends App {
 
   private val logger = LoggerFactory.getLogger(getClass)
   implicit private val sys = ActorSystem("notifications-monitor")
-
   import sys.dispatcher
 
   private val sensitiveConfig = ConfigFactory.parseFile(new File("src/main/resources/.sensitive.conf"))
-  ConfigFactory.load().withFallback(sensitiveConfig)
-
-  scala.sys addShutdownHook shutdown
-
+  private val config = ConfigFactory.load().withFallback(sensitiveConfig)
   private val (username, password) = (sensitiveConfig.getString("basic-auth.username"),
     sensitiveConfig.getString("basic-auth.password"))
-
-  private val pushConnector = sys.actorOf(PushConnector.props("localhost", 8080, "/content/notifications-push", (username, password)))
-  private val pullConnector = sys.actorOf(PullConnector.props("pre-prod-uk-up.ft.com", 443, "/content/notifications", (username, password)))
+  private val pushConnector = sys.actorOf(PushConnector.props(config.getString("push-host"), config.getInt("push-port"),
+    config.getString("push-uri"), (username, password)))
+  private val pullConnector = sys.actorOf(PullConnector.props(config.getString("pull-host"), config.getInt("pull-port"),
+    config.getString("pull-uri"), (username, password)))
 
   pushConnector ! Connect
-  private val pullSchedule = sys.scheduler.schedule(0 seconds, 10 seconds, pullConnector, RequestSinceLast)
+  private val pullSchedule = sys.scheduler.schedule(0 seconds, 1 minute, pullConnector, RequestSinceLast)
+
+  scala.sys addShutdownHook shutdown
 
   private def shutdown() = {
     logger.info("Exiting...")

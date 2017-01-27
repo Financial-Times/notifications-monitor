@@ -9,7 +9,7 @@ import akka.http.scaladsl.model.{HttpRequest, StatusCodes}
 import akka.http.scaladsl.model.headers.{Authorization, BasicHttpCredentials}
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Sink, Source}
-import com.ft.notificationsmonitor.PullConnector.{Request, RequestSinceLast}
+import com.ft.notificationsmonitor.PullConnector.RequestSinceLast
 import com.ft.notificationsmonitor.PullReader.Read
 import org.slf4j.LoggerFactory
 
@@ -30,14 +30,12 @@ class PullConnector(private val hostname: String,
   private var last = ZonedDateTime.now()
 
   override def receive: Receive = {
-    case Request(since) =>
-      makeRequest(since)
-
     case RequestSinceLast =>
       makeRequest(last)
   }
 
   private def makeRequest(date: ZonedDateTime): Unit = {
+    logger.debug("now is {}", ZonedDateTime.now())
     val uri1 = uriToConnect + "?since=" + date.format(DateTimeFormatter.ISO_INSTANT)
     val request = HttpRequest(uri = uri1)
       .addHeader(Authorization(BasicHttpCredentials(credentials._1, credentials._2)))
@@ -46,10 +44,10 @@ class PullConnector(private val hostname: String,
       .runWith(Sink.head)
     responseF.onComplete{
       case Failure(exception) =>
-        logger.warn("Failed request.", exception)
+        logger.warn("Failed request. host={} uri={}", Array(hostname, uriToConnect, exception):_*)
       case Success(response) =>
         if (!response.status.equals(StatusCodes.OK)) {
-          logger.warn("Response not ok. status=%", response.status.intValue())
+          logger.warn("Response status not ok. Retrying in a few moments... host={} uri={} status={}", Array(hostname, uriToConnect, response.status.intValue.toString):_*)
         } else {
           last = ZonedDateTime.now()
           reader ! Read(response.entity)
@@ -62,8 +60,6 @@ object PullConnector {
 
   def props(hostname: String, port: Int, uri: String, credentials: (String, String)) =
     Props(new PullConnector(hostname, port, uri, credentials))
-
-  case class Request(since: ZonedDateTime)
 
   case object RequestSinceLast
 }

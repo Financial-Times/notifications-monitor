@@ -26,8 +26,9 @@ class PushConnector(private val hostname: String,
   implicit private val mat = ActorMaterializer()
 
   private val logger = LoggerFactory.getLogger(getClass)
-  private val connectionFlow = Http().outgoingConnection(hostname, port)
+  private val connectionFlow = Http().outgoingConnectionHttps(hostname, port)
   private var reader = context.actorOf(PushReader.props)
+  private var cancelStreams = false
 
   override def receive: Receive = {
     case Connect =>
@@ -38,24 +39,27 @@ class PushConnector(private val hostname: String,
         .runWith(Sink.head)
       responseF onComplete {
         case Failure(exception) =>
-          logger.warn("Failed request. Retrying in a few moments...", exception)
+          logger.warn("Failed request. Retrying in a few moments... host={} uri={}", Array(hostname, uriToConnect, exception):_*)
           context.system.scheduler.scheduleOnce(5 seconds, self, Connect)
         case Success(response) =>
-          logger.info("Connected to push feed. host=%s status=%d", response.status.value)
           if (!response.status.equals(StatusCodes.OK)) {
-            logger.warn("Retrying in a few moments...")
+            logger.warn("Response status not ok. Retrying in a few moments... host={} uri={} status={}", Array(hostname, uriToConnect, response.status.intValue().toString):_*)
             context.system.scheduler.scheduleOnce(5 seconds, self, Connect)
           } else {
+            logger.info("Connected to push feed. host={} uri={} status={}", Array(hostname, uriToConnect, response.status.intValue().toString):_*)
             reader = context.actorOf(PushReader.props, "push-reader-" + ZonedDateTime.now().format(DateTimeFormatter.ISO_INSTANT))
             reader ! Read(response.entity.dataBytes)
           }
       }
 
     case CancelStreams =>
+      cancelStreams = true
       reader ! CancelStreams
 
     case StreamEnded =>
-      self ! Connect
+      if (!cancelStreams) {
+        self ! Connect
+      }
   }
 }
 
