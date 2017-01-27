@@ -7,7 +7,9 @@ An app for analyzing outages and stability of notifications-push.
 You will need:
 
 * Java 8 installed
-* [sbt](http://www.scala-sbt.org/download.html) installed (`brew install sbt` or use the zip)
+* [sbt](http://www.scala-sbt.org/download.html) installed
+  - OS X: `brew install sbt` or
+  - Linux: `curl https://bintray.com/sbt/rpm/rpm | sudo tee /etc/yum.repos.d/bintray-sbt-rpm.repo` and `sudo yum install sbt`
 
 To run:
 
