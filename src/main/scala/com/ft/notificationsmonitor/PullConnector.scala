@@ -35,7 +35,6 @@ class PullConnector(private val hostname: String,
   }
 
   private def makeRequest(date: ZonedDateTime): Unit = {
-    logger.debug("now is {}", ZonedDateTime.now())
     val uri1 = uriToConnect + "?since=" + date.format(DateTimeFormatter.ISO_INSTANT)
     val request = HttpRequest(uri = uri1)
       .addHeader(Authorization(BasicHttpCredentials(credentials._1, credentials._2)))
