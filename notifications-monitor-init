@@ -4,9 +4,9 @@
 # description: notifications-monitor daemon
 # processname: notifications-monitor
 
-DAEMON_PATH="/opt/notifications-monitor/target/universal/stage/bin/"
+DAEMON_PATH="/opt/notifications-monitor"
 
-DAEMON="notifications-monitor"
+DAEMON="target/universal/stage/bin/notifications-monitor"
 DAEMONOPTS=""
 
 NAME=notifications-monitor
