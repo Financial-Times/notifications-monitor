@@ -20,3 +20,11 @@ To develop:
 * `sbt compile`
 
 * `sbt test`
+
+To create jars and executables for production use:
+
+`sbt stage`
+
+Then run the generated executable script from `target/universal/stage/bin/notifications-monitor_2.12-1.0.0.jar`
+
+Or use the init.d service that's should be installed on the production machine: `sudo service notifications-monitor start`

@@ -14,3 +14,4 @@ libraryDependencies ++= Seq(
 
 mainClass in (Compile, run) := Some("com.ft.notificationsmonitor.NotificationsMonitor")
 
+enablePlugins(JavaAppPackaging)
