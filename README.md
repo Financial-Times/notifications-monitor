@@ -25,6 +25,9 @@ To create jars and executables for production use:
 
 `sbt stage`
 
-Then run the generated executable script from `target/universal/stage/bin/notifications-monitor_2.12-1.0.0.jar`
+Then run the generated executable script from `target/universal/stage/bin/notifications-monitor`
 
-Or use the init.d service that's should be installed on the production machine: `sudo service notifications-monitor start`
+Or use the init.d service that's should be installed on the production machine:
+
+`sudo /etc/init.d/notifications-monitor start`
+`sudo /etc/init.d/notifications-monitor stop`
