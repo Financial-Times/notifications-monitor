@@ -28,6 +28,8 @@ object NotificationsMonitor extends App {
   private val pullConnector = sys.actorOf(PullConnector.props(config.getString("pull-host"), config.getInt("pull-port"),
     config.getString("pull-uri"), (username, password)))
 
+  logger.info("Starting up...")
+
   pushConnector ! Connect
   private val pullSchedule = sys.scheduler.schedule(0 seconds, 1 minute, pullConnector, RequestSinceLast)
 

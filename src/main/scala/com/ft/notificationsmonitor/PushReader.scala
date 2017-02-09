@@ -1,41 +1,42 @@
 package com.ft.notificationsmonitor
 
 import akka.Done
-import akka.actor.{Actor, PoisonPill, Props}
-import akka.stream.{ActorMaterializer, KillSwitches}
+import akka.actor.{Actor, ActorLogging, PoisonPill, Props}
 import akka.stream.scaladsl.{Keep, Sink, Source}
+import akka.stream.{ActorMaterializer, KillSwitches}
 import akka.util.ByteString
+import com.ft.notificationsmonitor.NotificationEntryFormat._
 import com.ft.notificationsmonitor.PushConnector.StreamEnded
 import com.ft.notificationsmonitor.PushReader.{CancelStreams, Read}
-import org.slf4j.LoggerFactory
+import spray.json.DefaultJsonProtocol._
+import spray.json._
 
-import scala.concurrent.Promise
-import scala.util.Success
+import scala.concurrent.{Future, Promise}
+import scala.util.{Failure, Success}
 
-class PushReader extends Actor {
-
-  private val logger = LoggerFactory.getLogger(getClass)
+class PushReader extends Actor with ActorLogging {
 
   implicit private val ec = context.dispatcher
   implicit private val mat = ActorMaterializer()
 
-  private val willStopStreamP = Promise[Done]()
+  private val willCancelStreamP = Promise[Done]()
 
   override def receive: Receive = {
     case Read(source) =>
       val (killSwitch, doneF) = consumeBodyStream(source)
 
-      willStopStreamP.future.onComplete { _ =>
+      willCancelStreamP.future.onComplete { _ =>
         killSwitch.shutdown()
         self ! PoisonPill
       }
 
       doneF.onComplete { _ =>
+        log.info("Stream has ended.")
         context.parent ! StreamEnded
       }
 
     case CancelStreams =>
-      willStopStreamP.complete(Success(Done))
+      willCancelStreamP.complete(Success(Done))
   }
 
   private def consumeBodyStream(body: Source[ByteString, Any]) = {
@@ -54,15 +55,29 @@ class PushReader extends Actor {
       case i =>
         val lines = nextString.split("\n\n").toList
         if (nextString.length - 2 == i) {
-          lines.map(_.stripPrefix("data: [").stripSuffix("]")).foreach {
-            case "" => logger.info("heartbeat")
-            case s => logger.info(s)
-          }
+          parseLines(lines)
           ByteString("")
         } else {
-          lines.dropRight(1).foreach(l => logger.info(l))
+          parseLines(lines.dropRight(1))
           ByteString(lines.last)
         }
+    }
+  }
+
+  private def parseLines(lines: List[String]) = {
+    lines.map(_.stripPrefix("data: [").stripSuffix("]")).foreach {
+      case "" => log.info("heartbeat")
+      case s => parseLine(s)
+    }
+  }
+
+  private def parseLine(line: String) = {
+    Future {
+      val jsonLine = line.parseJson
+      jsonLine.convertTo[NotificationEntry]
+    }.onComplete {
+      case Success(entry) => log.info(entry.id)
+      case Failure(t) => log.error(t, "Error deserializing notifications response")
     }
   }
 }
@@ -74,4 +89,11 @@ object PushReader {
   case class Read(body: Source[ByteString, Any])
 
   case object CancelStreams
+}
+
+case class NotificationEntry(apiUrl: String, id: String)
+
+object NotificationEntryFormat {
+
+  implicit val notificationEntryFormat: RootJsonFormat[NotificationEntry] = DefaultJsonProtocol.jsonFormat2(NotificationEntry)
 }

@@ -5,8 +5,8 @@ import java.time.format.DateTimeFormatter
 
 import akka.actor.{Actor, Props}
 import akka.http.scaladsl.Http
-import akka.http.scaladsl.model.{HttpRequest, StatusCodes}
 import akka.http.scaladsl.model.headers.{Authorization, BasicHttpCredentials}
+import akka.http.scaladsl.model.{HttpRequest, StatusCodes}
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Sink, Source}
 import com.ft.notificationsmonitor.PushConnector.{Connect, StreamEnded}

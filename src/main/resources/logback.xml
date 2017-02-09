@@ -22,6 +22,9 @@
         <appender-ref ref="STDOUT" />
         <appender-ref ref="FILE" />
     </logger>
+    <!--<logger name="akka" level="DEBUG">-->
+        <!--<appender-ref ref="STDOUT"/>-->
+    <!--</logger>-->
     <root level="ERROR">
         <appender-ref ref="STDOUT" />
     </root>
