@@ -6,6 +6,7 @@ import java.time.format.DateTimeFormatter
 import PairMatcher.{DatedPullEntry, DatedPushEntry}
 import akka.actor.{Actor, ActorLogging, Props}
 import PairMatcher._
+import com.ft.notificationsmonitor.model.{PullEntry, PushEntry}
 
 import scala.collection.mutable
 

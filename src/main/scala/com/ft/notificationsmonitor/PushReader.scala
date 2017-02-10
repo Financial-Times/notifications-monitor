@@ -5,9 +5,10 @@ import akka.actor.{Actor, ActorLogging, ActorRef, PoisonPill, Props}
 import akka.stream.scaladsl.{Keep, Sink, Source}
 import akka.stream.{ActorMaterializer, KillSwitches}
 import akka.util.ByteString
-import com.ft.notificationsmonitor.PushEntryFormat._
 import com.ft.notificationsmonitor.PushConnector.StreamEnded
 import com.ft.notificationsmonitor.PushReader.{CancelStreams, Read}
+import com.ft.notificationsmonitor.model.PushEntry
+import com.ft.notificationsmonitor.model.PushEntryFormat._
 import spray.json.DefaultJsonProtocol._
 import spray.json._
 
@@ -91,19 +92,4 @@ object PushReader {
   case class Read(body: Source[ByteString, Any])
 
   case object CancelStreams
-}
-
-case class PushEntry(apiUrl: String, id: String)
-
-case class PullEntry(apiUrl: String, id: String)
-
-object PushEntryFormat {
-
-  implicit val pushEntryFormat: RootJsonFormat[PushEntry] = DefaultJsonProtocol.jsonFormat2(PushEntry)
-
-}
-
-object PullEntryFormat {
-
-  implicit val pullEntryFormat: RootJsonFormat[PullEntry] = DefaultJsonProtocol.jsonFormat2(PullEntry)
 }

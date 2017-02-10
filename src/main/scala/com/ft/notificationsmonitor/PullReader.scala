@@ -4,11 +4,10 @@ import akka.actor.{Actor, ActorLogging, ActorRef, Props}
 import akka.http.scaladsl.model.ResponseEntity
 import akka.stream.ActorMaterializer
 import com.ft.notificationsmonitor.PullReader.Read
+import com.ft.notificationsmonitor.model.PullPage
+import com.ft.notificationsmonitor.model.PullPageFormat._
 import spray.json.DefaultJsonProtocol._
 import spray.json._
-import PullPageFormat._
-import PullEntryFormat._
-import LinkFormat._
 
 import scala.concurrent.Future
 import scala.concurrent.duration._
@@ -52,17 +51,3 @@ object PullReader {
   case class Read(entity: ResponseEntity)
 }
 
-case class PullPage(requestUrl: String, notifications: List[PullEntry], links: List[Link])
-
-case class Link(href: String, rel: String)
-
-object PullPageFormat {
-
-  implicit val pullPageFormat: RootJsonFormat[PullPage] = DefaultJsonProtocol.jsonFormat3(PullPage)
-
-}
-
-object LinkFormat {
-
-  implicit val linkFormat: RootJsonFormat[Link] = DefaultJsonProtocol.jsonFormat2(Link)
-}
