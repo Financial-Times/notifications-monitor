@@ -3,31 +3,29 @@ package com.ft.notificationsmonitor
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 
-import akka.actor.{Actor, ActorRef, Props}
+import akka.actor.{Actor, ActorLogging, ActorRef, Props}
 import akka.http.scaladsl.Http
-import akka.http.scaladsl.model.{HttpRequest, StatusCodes}
 import akka.http.scaladsl.model.headers.{Authorization, BasicHttpCredentials}
+import akka.http.scaladsl.model.{HttpRequest, StatusCodes}
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Sink, Source}
 import com.ft.notificationsmonitor.PullConnector.RequestSinceLast
-import com.ft.notificationsmonitor.PullReader.Read
-import org.slf4j.LoggerFactory
+import com.ft.notificationsmonitor.model.{HttpConfig, PullPage}
+import com.ft.notificationsmonitor.model.PullPageFormat._
+import spray.json._
 
+import scala.concurrent.Future
+import scala.concurrent.duration._
 import scala.util.{Failure, Success}
 
-class PullConnector(private val hostname: String,
-                    private val port: Int,
-                    private val uriToConnect: String,
-                    private val credentials: (String, String),
-                    private val pairMatcher: ActorRef) extends Actor {
+class PullConnector(private val httpConfig: HttpConfig,
+                    private val pairMatcher: ActorRef) extends Actor with ActorLogging {
 
   implicit private val sys = context.system
   implicit private val ec = context.dispatcher
   implicit private val mat = ActorMaterializer()
 
-  private val logger = LoggerFactory.getLogger(getClass)
-  private val connectionFlow = Http().outgoingConnectionHttps(hostname, port)
-  private val reader = context.actorOf(PullReader.props(pairMatcher), "pull-reader-" + ZonedDateTime.now().format(DateTimeFormatter.ISO_INSTANT))
+  private val connectionFlow = Http().outgoingConnectionHttps(httpConfig.hostname, httpConfig.port)
   private var last = ZonedDateTime.now()
 
   override def receive: Receive = {
@@ -35,31 +33,45 @@ class PullConnector(private val hostname: String,
       makeRequest(last)
   }
 
-  private def makeRequest(date: ZonedDateTime): Unit = {
-    val uri1 = uriToConnect + "?since=" + date.format(DateTimeFormatter.ISO_INSTANT)
+  private def makeRequest(date: ZonedDateTime) = {
+    val uri1 = httpConfig.uri + "?since=" + date.format(DateTimeFormatter.ISO_INSTANT)
     val request = HttpRequest(uri = uri1)
-      .addHeader(Authorization(BasicHttpCredentials(credentials._1, credentials._2)))
+      .addHeader(Authorization(BasicHttpCredentials(httpConfig.credentials._1, httpConfig.credentials._2)))
     val responseF = Source.single(request)
       .via(connectionFlow)
       .runWith(Sink.head)
     responseF.onComplete{
       case Failure(exception) =>
-        logger.warn("Failed request. host={} uri={}", Array(hostname, uriToConnect, exception):_*)
+        log.error(exception, "Failed request. host={} uri={}", httpConfig.hostname, httpConfig.uri)
       case Success(response) =>
         if (!response.status.equals(StatusCodes.OK)) {
-          logger.warn("Response status not ok. Retrying in a few moments... host={} uri={} status={}", Array(hostname, uriToConnect, response.status.intValue.toString):_*)
+          log.warning("Response status not ok. Retrying in a few moments... host={} uri={} status={}", httpConfig.hostname, httpConfig.uri, response.status.intValue)
         } else {
           last = ZonedDateTime.now()
-          reader ! Read(response.entity)
+          response.entity.toStrict(5 seconds).map(httpEntity => parsePage(httpEntity.data.utf8String))
         }
+    }
+  }
+
+  private def parsePage(pageText: String) = {
+    Future {
+      val jsonPage = pageText.parseJson
+      jsonPage.convertTo[PullPage]
+    }.onComplete {
+      case Success(page) =>
+        page.notifications.foreach { entry =>
+          log.info(entry.id)
+          pairMatcher ! entry
+        }
+      case Failure(t) => log.error(t, "Error deserializing notifications response: {}", pageText)
     }
   }
 }
 
 object PullConnector {
 
-  def props(hostname: String, port: Int, uri: String, credentials: (String, String), pairMatcher: ActorRef) =
-    Props(new PullConnector(hostname, port, uri, credentials, pairMatcher))
+  def props(httpConfig: HttpConfig, pairMatcher: ActorRef) =
+    Props(new PullConnector(httpConfig, pairMatcher))
 
   case object RequestSinceLast
 }

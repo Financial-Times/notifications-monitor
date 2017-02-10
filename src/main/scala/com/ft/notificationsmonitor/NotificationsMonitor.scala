@@ -6,8 +6,9 @@ import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
 import com.ft.notificationsmonitor.PairMatcher.Report
 import com.ft.notificationsmonitor.PullConnector.RequestSinceLast
-import com.ft.notificationsmonitor.PushConnector.{Connect, HttpConfig}
+import com.ft.notificationsmonitor.PushConnector.Connect
 import com.ft.notificationsmonitor.PushReader.CancelStreams
+import com.ft.notificationsmonitor.model.HttpConfig
 import com.typesafe.config.ConfigFactory
 import org.slf4j.LoggerFactory
 
@@ -27,11 +28,12 @@ object NotificationsMonitor extends App {
   private val (username, password) = (sensitiveConfig.getString("basic-auth.username"),
     sensitiveConfig.getString("basic-auth.password"))
   private val pairMatcher = sys.actorOf(PairMatcher.props)
-  val httpConfig = HttpConfig(config.getString("push-host"), config.getInt("push-port"),
+  private val pushHttpConfig = HttpConfig(config.getString("push-host"), config.getInt("push-port"),
     config.getString("push-uri"), (username, password))
-  private val pushConnector = sys.actorOf(PushConnector.props(httpConfig, pairMatcher))
-  private val pullConnector = sys.actorOf(PullConnector.props(config.getString("pull-host"), config.getInt("pull-port"),
-    config.getString("pull-uri"), (username, password), pairMatcher))
+  private val pushConnector = sys.actorOf(PushConnector.props(pushHttpConfig, pairMatcher))
+  private val pullHttpConfig = HttpConfig(config.getString("pull-host"), config.getInt("pull-port"),
+    config.getString("pull-uri"), (username, password))
+  private val pullConnector = sys.actorOf(PullConnector.props(pullHttpConfig, pairMatcher))
   pushConnector ! Connect
   private val pullSchedule = sys.scheduler.schedule(0 seconds, 1 minute, pullConnector, RequestSinceLast)
   private val reportSchedule = sys.scheduler.schedule(0 seconds, 1 minute, pairMatcher, Report)

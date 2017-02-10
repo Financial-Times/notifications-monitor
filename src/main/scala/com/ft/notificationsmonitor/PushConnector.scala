@@ -9,8 +9,9 @@ import akka.http.scaladsl.model.headers.{Authorization, BasicHttpCredentials}
 import akka.http.scaladsl.model.{HttpRequest, StatusCodes}
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Sink, Source}
-import com.ft.notificationsmonitor.PushConnector.{Connect, HttpConfig, StreamEnded}
+import com.ft.notificationsmonitor.PushConnector.{Connect, StreamEnded}
 import com.ft.notificationsmonitor.PushReader.{CancelStreams, Read}
+import com.ft.notificationsmonitor.model.HttpConfig
 import org.slf4j.LoggerFactory
 
 import scala.concurrent.duration._
@@ -64,8 +65,6 @@ class PushConnector(private val httpConfig: HttpConfig,
 object PushConnector {
 
   def props(httpConfig: HttpConfig, pairMatcher: ActorRef) = Props(new PushConnector(httpConfig, pairMatcher))
-
-  case class HttpConfig(hostname: String, port: Int, uri: String, credentials: (String, String))
 
   case object Connect
 

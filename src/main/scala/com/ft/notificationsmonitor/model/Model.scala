@@ -34,3 +34,5 @@ object LinkFormat {
 
   implicit val linkFormat: RootJsonFormat[Link] = DefaultJsonProtocol.jsonFormat2(Link)
 }
+
+case class HttpConfig(hostname: String, port: Int, uri: String, credentials: (String, String))
