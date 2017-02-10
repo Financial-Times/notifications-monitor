@@ -7,23 +7,27 @@ import spray.json._
 import PullEntryFormat._
 import LinkFormat._
 
-case class PushEntry(apiUrl: String, id: String)
+abstract class NotificationEntry(val apiUrl: String, val id: String) {}
+
+case class DatedEntry(entry: NotificationEntry, date: ZonedDateTime)
+
+case class PushEntry(override val apiUrl: String, override val id: String) extends NotificationEntry(apiUrl, id)
+
+case class PullEntry(override val apiUrl: String, override val id: String) extends NotificationEntry(apiUrl, id)
 
 case class DatedPushEntry(entry: PushEntry, date: ZonedDateTime)
-
-case class PullEntry(apiUrl: String, id: String)
 
 case class DatedPullEntry(entry: PullEntry, date: ZonedDateTime)
 
 object PushEntryFormat {
 
-  implicit val pushEntryFormat: RootJsonFormat[PushEntry] = DefaultJsonProtocol.jsonFormat2(PushEntry)
+  implicit val pushEntryFormat: RootJsonFormat[PushEntry] = DefaultJsonProtocol.jsonFormat(PushEntry.apply, "apiUrl", "id")
 
 }
 
 object PullEntryFormat {
 
-  implicit val pullEntryFormat: RootJsonFormat[PullEntry] = DefaultJsonProtocol.jsonFormat2(PullEntry)
+  implicit val pullEntryFormat: RootJsonFormat[PullEntry] = DefaultJsonProtocol.jsonFormat(PullEntry.apply, "apiUrl", "id")
 }
 
 case class PullPage(requestUrl: String, notifications: List[PullEntry], links: List[Link])

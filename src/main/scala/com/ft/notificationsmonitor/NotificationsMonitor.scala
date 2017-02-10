@@ -36,7 +36,7 @@ object NotificationsMonitor extends App {
   private val pullConnector = sys.actorOf(PullConnector.props(pullHttpConfig, pairMatcher))
   pushConnector ! Connect
   private val pullSchedule = sys.scheduler.schedule(0 seconds, 1 minute, pullConnector, RequestSinceLast)
-  private val reportSchedule = sys.scheduler.schedule(0 seconds, 1 minute, pairMatcher, Report)
+  private val reportSchedule = sys.scheduler.schedule(1 minute, 1 minute, pairMatcher, Report)
   scala.sys addShutdownHook shutdown
 
   private def shutdown() = {
