@@ -3,10 +3,9 @@ package com.ft.notificationsmonitor
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 
-import PairMatcher.{DatedPullEntry, DatedPushEntry}
 import akka.actor.{Actor, ActorLogging, Props}
 import PairMatcher._
-import com.ft.notificationsmonitor.model.{PullEntry, PushEntry}
+import com.ft.notificationsmonitor.model.{DatedPullEntry, DatedPushEntry, PullEntry, PushEntry}
 
 import scala.collection.mutable
 
@@ -17,27 +16,27 @@ class PairMatcher extends Actor with ActorLogging {
   private var canStartMatchinPushes = false
 
   override def receive: Receive = {
-    case pushEntry: PushEntry =>
+    case pushEntry: DatedPushEntry =>
       if (canStartMatchinPushes) {
-        pullEntries.find(p => p.entry.id.equals(pushEntry.id)) match {
+        pullEntries.find(p => p.entry.id.equals(pushEntry.entry.id)) match {
           case Some(pair) =>
-            log.debug("Found pair for push entry {}", pushEntry.id)
+            log.debug("Found pair for push entry {}", pushEntry.entry.id)
             pullEntries.remove(pullEntries.indexOf(pair))
           case None =>
-            log.debug("Not found pair for push entry. Adding {}", pushEntry.id)
-            pushEntries.append(DatedPushEntry(pushEntry, ZonedDateTime.now))
+            log.debug("Not found pair for push entry. Adding {}", pushEntry.entry.id)
+            pushEntries.append(pushEntry)
         }
       }
 
-    case pullEntry: PullEntry =>
+    case pullEntry: DatedPullEntry =>
       canStartMatchinPushes = true
-      pushEntries.find(p => p.entry.id.equals(pullEntry.id)) match {
+      pushEntries.find(p => p.entry.id.equals(pullEntry.entry.id)) match {
         case Some(pair) =>
-          log.debug("Found pair for pull entry {}", pullEntry.id)
+          log.debug("Found pair for pull entry {}", pullEntry.entry.id)
           pushEntries.remove(pushEntries.indexOf(pair))
         case None =>
-          log.debug("Not found pair for pull entry. Adding {}", pullEntry.id)
-          pullEntries.append(DatedPullEntry(pullEntry, ZonedDateTime.now))
+          log.debug("Not found pair for pull entry. Adding {}", pullEntry.entry.id)
+          pullEntries.append(pullEntry)
       }
 
     case Report =>
@@ -65,10 +64,6 @@ class PairMatcher extends Actor with ActorLogging {
 object PairMatcher {
 
   def props = Props(new PairMatcher())
-
-  case class DatedPushEntry(entry: PushEntry, date: ZonedDateTime)
-
-  case class DatedPullEntry(entry: PullEntry, date: ZonedDateTime)
 
   case object Report
 }

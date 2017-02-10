@@ -1,5 +1,7 @@
 package com.ft.notificationsmonitor.model
 
+import java.time.ZonedDateTime
+
 import spray.json.DefaultJsonProtocol._
 import spray.json._
 import PullEntryFormat._
@@ -7,7 +9,11 @@ import LinkFormat._
 
 case class PushEntry(apiUrl: String, id: String)
 
+case class DatedPushEntry(entry: PushEntry, date: ZonedDateTime)
+
 case class PullEntry(apiUrl: String, id: String)
+
+case class DatedPullEntry(entry: PullEntry, date: ZonedDateTime)
 
 object PushEntryFormat {
 

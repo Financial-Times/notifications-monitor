@@ -26,7 +26,7 @@ class PushConnector(private val httpConfig: HttpConfig,
 
   private val logger = LoggerFactory.getLogger(getClass)
   private val connectionFlow = Http().outgoingConnectionHttps(httpConfig.hostname, httpConfig.port)
-  private var reader = context.actorOf(PushReader.props(pairMatcher), "push-reader-" + ZonedDateTime.now().format(DateTimeFormatter.ISO_INSTANT))
+  private var reader = context.actorOf(PushReader.props(pairMatcher))
   private var cancelStreams = false
 
   override def receive: Receive = {
@@ -46,7 +46,7 @@ class PushConnector(private val httpConfig: HttpConfig,
             context.system.scheduler.scheduleOnce(5 seconds, self, Connect)
           } else {
             logger.info("Connected to push feed. host={} uri={} status={}", Array(httpConfig.hostname, httpConfig.uri, response.status.intValue().toString):_*)
-            reader = context.actorOf(PushReader.props(pairMatcher), "push-reader-" + ZonedDateTime.now().format(DateTimeFormatter.ISO_INSTANT))
+            reader = context.actorOf(PushReader.props(pairMatcher))
             reader ! Read(response.entity.dataBytes)
           }
       }
