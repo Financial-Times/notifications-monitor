@@ -11,40 +11,29 @@ import scala.collection.mutable
 
 class PairMatcher extends Actor with ActorLogging {
 
-  private val pushEntries = mutable.ArrayBuffer[DatedPushEntry]()
-  private val pullEntries = mutable.ArrayBuffer[DatedPullEntry]()
+  private val pushEntries = mutable.ArrayBuffer[DatedEntry]()
+  private val pullEntries = mutable.ArrayBuffer[DatedEntry]()
 
   override def receive: Receive = {
 
-//    case DatedEntry(pushEntry: PushEntry, date: ZonedDateTime) =>
-//      pullEntries.find(p => p.entry.id.equals(pushEntry.id)) match {
-//        case Some(pair) =>
-//          log.debug("Found pair for push entry {}", pushEntry.entry.id)
-//          pullEntries.remove(pullEntries.indexOf(pair))
-//        case None =>
-//          log.debug("Not found pair for push entry. Adding {}", pushEntry.entry.id)
-//          pushEntries.append(pushEntry)
-//      }
-
-
-    case pushEntry: DatedPushEntry =>
-      pullEntries.find(p => p.entry.id.equals(pushEntry.entry.id)) match {
+    case DatedEntry(pushEntry: PushEntry, date: ZonedDateTime) =>
+      pullEntries.find(p => p.entry.id.equals(pushEntry.id)) match {
         case Some(pair) =>
-          log.debug("Found pair for push entry {}", pushEntry.entry.id)
+          log.debug("Found pair for push entry {}", pushEntry.id)
           pullEntries.remove(pullEntries.indexOf(pair))
         case None =>
-          log.debug("Not found pair for push entry. Adding {}", pushEntry.entry.id)
-          pushEntries.append(pushEntry)
+          log.debug("Not found pair for push entry. Adding {}", pushEntry.id)
+          pushEntries.append(DatedEntry(pushEntry, date))
       }
 
-    case pullEntry: DatedPullEntry =>
-      pushEntries.find(p => p.entry.id.equals(pullEntry.entry.id)) match {
+    case DatedEntry(pullEntry: PullEntry, date: ZonedDateTime) =>
+      pushEntries.find(p => p.entry.id.equals(pullEntry.id)) match {
         case Some(pair) =>
-          log.debug("Found pair for pull entry {}", pullEntry.entry.id)
+          log.debug("Found pair for pull entry {}", pullEntry.id)
           pushEntries.remove(pushEntries.indexOf(pair))
         case None =>
-          log.debug("Not found pair for pull entry. Adding {}", pullEntry.entry.id)
-          pullEntries.append(pullEntry)
+          log.debug("Not found pair for pull entry. Adding {}", pullEntry.id)
+          pullEntries.append(DatedEntry(pullEntry, date))
       }
 
     case Report =>

@@ -1,5 +1,7 @@
 package com.ft.notificationsmonitor
 
+import java.time.ZonedDateTime
+
 import akka.Done
 import akka.actor.{Actor, ActorLogging, ActorRef, PoisonPill, Props}
 import akka.stream.scaladsl.{Keep, Sink, Source}
@@ -7,7 +9,7 @@ import akka.stream.{ActorMaterializer, KillSwitches}
 import akka.util.ByteString
 import com.ft.notificationsmonitor.PushConnector.StreamEnded
 import com.ft.notificationsmonitor.PushReader.{CancelStreams, Read}
-import com.ft.notificationsmonitor.model.PushEntry
+import com.ft.notificationsmonitor.model.{DatedEntry, PushEntry}
 import com.ft.notificationsmonitor.model.PushEntryFormat._
 import spray.json.DefaultJsonProtocol._
 import spray.json._
@@ -79,7 +81,7 @@ class PushReader(private val pairMatcher: ActorRef) extends Actor with ActorLogg
     }.onComplete {
       case Success(entry) =>
         log.info(entry.id)
-        pairMatcher ! entry
+        pairMatcher ! DatedEntry(entry, ZonedDateTime.now)
       case Failure(t) => log.error(t, "Error deserializing notifications response")
     }
   }

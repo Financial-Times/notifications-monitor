@@ -15,10 +15,6 @@ case class PushEntry(override val apiUrl: String, override val id: String) exten
 
 case class PullEntry(override val apiUrl: String, override val id: String) extends NotificationEntry(apiUrl, id)
 
-case class DatedPushEntry(entry: PushEntry, date: ZonedDateTime)
-
-case class DatedPullEntry(entry: PullEntry, date: ZonedDateTime)
-
 object PushEntryFormat {
 
   implicit val pushEntryFormat: RootJsonFormat[PushEntry] = DefaultJsonProtocol.jsonFormat(PushEntry.apply, "apiUrl", "id")

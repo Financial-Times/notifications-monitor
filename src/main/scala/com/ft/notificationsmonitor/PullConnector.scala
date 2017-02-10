@@ -10,7 +10,7 @@ import akka.http.scaladsl.model.{HttpRequest, StatusCodes}
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Sink, Source}
 import com.ft.notificationsmonitor.PullConnector.RequestSinceLast
-import com.ft.notificationsmonitor.model.{DatedPullEntry, HttpConfig, PullPage}
+import com.ft.notificationsmonitor.model.{DatedEntry, HttpConfig, PullPage}
 import com.ft.notificationsmonitor.model.PullPageFormat._
 import spray.json._
 
@@ -61,7 +61,7 @@ class PullConnector(private val httpConfig: HttpConfig,
       case Success(page) =>
         page.notifications.foreach { entry =>
           log.info(entry.id)
-          pairMatcher ! DatedPullEntry(entry, ZonedDateTime.now())
+          pairMatcher ! DatedEntry(entry, ZonedDateTime.now())
         }
       case Failure(t) => log.error(t, "Error deserializing notifications response: {}", pageText)
     }
