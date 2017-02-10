@@ -43,7 +43,9 @@ class PairMatcher extends Actor with ActorLogging {
       } else {
         pushToReport.foreach{ datedEntry =>
           log.warning("No pair for push notification after 2 minutes. id={} date={}", datedEntry.entry.id, datedEntry.date.format(DateTimeFormatter.ISO_INSTANT))
+          pushEntries.remove(pushEntries.indexOf(datedEntry))
         }
+
       }
 
       val pullToReport = pullEntries.filter(p => p.date.isBefore(ZonedDateTime.now.minusMinutes(2)))
@@ -52,6 +54,7 @@ class PairMatcher extends Actor with ActorLogging {
       } else {
         pullToReport.foreach{ datedEntry =>
           log.warning("No pair for (pull) notification after 2 minutes. id={} date={}", datedEntry.entry.id, datedEntry.date.format(DateTimeFormatter.ISO_INSTANT))
+          pullEntries.remove(pullEntries.indexOf(datedEntry))
         }
       }
       log.info("Report finished.")
