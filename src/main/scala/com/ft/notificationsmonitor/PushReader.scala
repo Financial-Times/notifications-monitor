@@ -10,7 +10,7 @@ import akka.util.ByteString
 import com.ft.notificationsmonitor.PushConnector.StreamEnded
 import com.ft.notificationsmonitor.PushReader.{CancelStreams, Read}
 import com.ft.notificationsmonitor.model.{DatedEntry, PushEntry}
-import com.ft.notificationsmonitor.model.PushEntryFormat._
+import com.ft.notificationsmonitor.model.NotificationFormats._
 import spray.json.DefaultJsonProtocol._
 import spray.json._
 

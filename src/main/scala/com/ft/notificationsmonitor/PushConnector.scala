@@ -1,8 +1,5 @@
 package com.ft.notificationsmonitor
 
-import java.time.ZonedDateTime
-import java.time.format.DateTimeFormatter
-
 import akka.actor.{Actor, ActorRef, Props}
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model.headers.{Authorization, BasicHttpCredentials}
