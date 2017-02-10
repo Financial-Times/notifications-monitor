@@ -3,7 +3,7 @@ package com.ft.notificationsmonitor
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 
-import akka.actor.{Actor, Props}
+import akka.actor.{Actor, ActorRef, Props}
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model.{HttpRequest, StatusCodes}
 import akka.http.scaladsl.model.headers.{Authorization, BasicHttpCredentials}
@@ -18,7 +18,8 @@ import scala.util.{Failure, Success}
 class PullConnector(private val hostname: String,
                     private val port: Int,
                     private val uriToConnect: String,
-                    private val credentials: (String, String)) extends Actor {
+                    private val credentials: (String, String),
+                    private val pairMatcher: ActorRef) extends Actor {
 
   implicit private val sys = context.system
   implicit private val ec = context.dispatcher
@@ -26,7 +27,7 @@ class PullConnector(private val hostname: String,
 
   private val logger = LoggerFactory.getLogger(getClass)
   private val connectionFlow = Http().outgoingConnectionHttps(hostname, port)
-  private val reader = context.actorOf(PullReader.props, "pull-reader-" + ZonedDateTime.now().format(DateTimeFormatter.ISO_INSTANT))
+  private val reader = context.actorOf(PullReader.props(pairMatcher), "pull-reader-" + ZonedDateTime.now().format(DateTimeFormatter.ISO_INSTANT))
   private var last = ZonedDateTime.now()
 
   override def receive: Receive = {
@@ -57,8 +58,8 @@ class PullConnector(private val hostname: String,
 
 object PullConnector {
 
-  def props(hostname: String, port: Int, uri: String, credentials: (String, String)) =
-    Props(new PullConnector(hostname, port, uri, credentials))
+  def props(hostname: String, port: Int, uri: String, credentials: (String, String), pairMatcher: ActorRef) =
+    Props(new PullConnector(hostname, port, uri, credentials, pairMatcher))
 
   case object RequestSinceLast
 }

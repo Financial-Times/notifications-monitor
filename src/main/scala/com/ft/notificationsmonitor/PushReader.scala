@@ -1,11 +1,11 @@
 package com.ft.notificationsmonitor
 
 import akka.Done
-import akka.actor.{Actor, ActorLogging, PoisonPill, Props}
+import akka.actor.{Actor, ActorLogging, ActorRef, PoisonPill, Props}
 import akka.stream.scaladsl.{Keep, Sink, Source}
 import akka.stream.{ActorMaterializer, KillSwitches}
 import akka.util.ByteString
-import com.ft.notificationsmonitor.NotificationEntryFormat._
+import com.ft.notificationsmonitor.PushEntryFormat._
 import com.ft.notificationsmonitor.PushConnector.StreamEnded
 import com.ft.notificationsmonitor.PushReader.{CancelStreams, Read}
 import spray.json.DefaultJsonProtocol._
@@ -14,7 +14,7 @@ import spray.json._
 import scala.concurrent.{Future, Promise}
 import scala.util.{Failure, Success}
 
-class PushReader extends Actor with ActorLogging {
+class PushReader(private val pairMatcher: ActorRef) extends Actor with ActorLogging {
 
   implicit private val ec = context.dispatcher
   implicit private val mat = ActorMaterializer()
@@ -74,9 +74,11 @@ class PushReader extends Actor with ActorLogging {
   private def parseLine(line: String) = {
     Future {
       val jsonLine = line.parseJson
-      jsonLine.convertTo[NotificationEntry]
+      jsonLine.convertTo[PushEntry]
     }.onComplete {
-      case Success(entry) => log.info(entry.id)
+      case Success(entry) =>
+        log.info(entry.id)
+        pairMatcher ! entry
       case Failure(t) => log.error(t, "Error deserializing notifications response")
     }
   }
@@ -84,16 +86,24 @@ class PushReader extends Actor with ActorLogging {
 
 object PushReader {
 
-  def props = Props(new PushReader())
+  def props(pairMatcher: ActorRef) = Props(new PushReader(pairMatcher))
 
   case class Read(body: Source[ByteString, Any])
 
   case object CancelStreams
 }
 
-case class NotificationEntry(apiUrl: String, id: String)
+case class PushEntry(apiUrl: String, id: String)
 
-object NotificationEntryFormat {
+case class PullEntry(apiUrl: String, id: String)
 
-  implicit val notificationEntryFormat: RootJsonFormat[NotificationEntry] = DefaultJsonProtocol.jsonFormat2(NotificationEntry)
+object PushEntryFormat {
+
+  implicit val pushEntryFormat: RootJsonFormat[PushEntry] = DefaultJsonProtocol.jsonFormat2(PushEntry)
+
+}
+
+object PullEntryFormat {
+
+  implicit val pullEntryFormat: RootJsonFormat[PullEntry] = DefaultJsonProtocol.jsonFormat2(PullEntry)
 }

@@ -1,20 +1,20 @@
 package com.ft.notificationsmonitor
 
-import akka.actor.{Actor, ActorLogging, Props}
+import akka.actor.{Actor, ActorLogging, ActorRef, Props}
 import akka.http.scaladsl.model.ResponseEntity
 import akka.stream.ActorMaterializer
 import com.ft.notificationsmonitor.PullReader.Read
 import spray.json.DefaultJsonProtocol._
 import spray.json._
 import PullPageFormat._
-import NotificationEntryFormat._
+import PullEntryFormat._
 import LinkFormat._
 
 import scala.concurrent.Future
 import scala.concurrent.duration._
 import scala.util.{Failure, Success}
 
-class PullReader extends Actor with ActorLogging {
+class PullReader(private val pairMatcher: ActorRef) extends Actor with ActorLogging {
 
   implicit private val ec = context.dispatcher
   implicit private val mat = ActorMaterializer()
@@ -35,27 +35,32 @@ class PullReader extends Actor with ActorLogging {
       val jsonPage = pageText.parseJson
       jsonPage.convertTo[PullPage]
     }.onComplete {
-      case Success(page) => page.notifications.foreach(entry => log.info(entry.id))
-      case Failure(t) => log.error(t, "Error deserializing notifications response")
+      case Success(page) =>
+        page.notifications.foreach { entry =>
+          log.info(entry.id)
+          pairMatcher ! entry
+        }
+      case Failure(t) => log.error(t, "Error deserializing notifications response: {}", pageText)
     }
   }
 }
 
 object PullReader {
 
-  def props = Props(new PullReader())
+  def props(pairMatcher: ActorRef) = Props(new PullReader(pairMatcher))
 
   case class Read(entity: ResponseEntity)
 }
 
-case class PullPage(requestUrl: String, notifications: List[NotificationEntry], links: List[Link])
+case class PullPage(requestUrl: String, notifications: List[PullEntry], links: List[Link])
+
+case class Link(href: String, rel: String)
 
 object PullPageFormat {
 
   implicit val pullPageFormat: RootJsonFormat[PullPage] = DefaultJsonProtocol.jsonFormat3(PullPage)
-}
 
-case class Link(href: String, rel: String)
+}
 
 object LinkFormat {
 

@@ -3,51 +3,49 @@ package com.ft.notificationsmonitor
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 
-import akka.actor.{Actor, Props}
+import akka.actor.{Actor, ActorRef, Props}
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model.headers.{Authorization, BasicHttpCredentials}
 import akka.http.scaladsl.model.{HttpRequest, StatusCodes}
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Sink, Source}
-import com.ft.notificationsmonitor.PushConnector.{Connect, StreamEnded}
+import com.ft.notificationsmonitor.PushConnector.{Connect, HttpConfig, StreamEnded}
 import com.ft.notificationsmonitor.PushReader.{CancelStreams, Read}
 import org.slf4j.LoggerFactory
 
 import scala.concurrent.duration._
 import scala.util.{Failure, Success}
 
-class PushConnector(private val hostname: String,
-                    private val port: Int,
-                    private val uriToConnect: String,
-                    private val credentials: (String, String)) extends Actor {
+class PushConnector(private val httpConfig: HttpConfig,
+                    private val pairMatcher: ActorRef) extends Actor {
 
   implicit private val sys = context.system
   implicit private val ec = context.dispatcher
   implicit private val mat = ActorMaterializer()
 
   private val logger = LoggerFactory.getLogger(getClass)
-  private val connectionFlow = Http().outgoingConnectionHttps(hostname, port)
-  private var reader = context.actorOf(PushReader.props)
+  private val connectionFlow = Http().outgoingConnectionHttps(httpConfig.hostname, httpConfig.port)
+  private var reader = context.actorOf(PushReader.props(pairMatcher), "push-reader-" + ZonedDateTime.now().format(DateTimeFormatter.ISO_INSTANT))
   private var cancelStreams = false
 
   override def receive: Receive = {
     case Connect =>
-      val request = HttpRequest(uri = uriToConnect)
-        .addHeader(Authorization(BasicHttpCredentials(credentials._1, credentials._2)))
+      val request = HttpRequest(uri = httpConfig.uri)
+        .addHeader(Authorization(BasicHttpCredentials(httpConfig.credentials._1, httpConfig.credentials._2)))
       val responseF = Source.single(request)
         .via(connectionFlow)
         .runWith(Sink.head)
       responseF onComplete {
         case Failure(exception) =>
-          logger.warn("Failed request. Retrying in a few moments... host={} uri={}", Array(hostname, uriToConnect, exception):_*)
+          logger.warn("Failed request. Retrying in a few moments... host={} uri={}", Array(httpConfig.hostname, httpConfig.uri, exception):_*)
           context.system.scheduler.scheduleOnce(5 seconds, self, Connect)
         case Success(response) =>
           if (!response.status.equals(StatusCodes.OK)) {
-            logger.warn("Response status not ok. Retrying in a few moments... host={} uri={} status={}", Array(hostname, uriToConnect, response.status.intValue().toString):_*)
+            logger.warn("Response status not ok. Retrying in a few moments... host={} uri={} status={}", Array(httpConfig.hostname, httpConfig.uri, response.status.intValue().toString):_*)
             context.system.scheduler.scheduleOnce(5 seconds, self, Connect)
           } else {
-            logger.info("Connected to push feed. host={} uri={} status={}", Array(hostname, uriToConnect, response.status.intValue().toString):_*)
-            reader = context.actorOf(PushReader.props, "push-reader-" + ZonedDateTime.now().format(DateTimeFormatter.ISO_INSTANT))
+            logger.info("Connected to push feed. host={} uri={} status={}", Array(httpConfig.hostname, httpConfig.uri, response.status.intValue().toString):_*)
+            reader = context.actorOf(PushReader.props(pairMatcher), "push-reader-" + ZonedDateTime.now().format(DateTimeFormatter.ISO_INSTANT))
             reader ! Read(response.entity.dataBytes)
           }
       }
@@ -65,8 +63,9 @@ class PushConnector(private val hostname: String,
 
 object PushConnector {
 
-  def props(hostname: String, port: Int, uri: String, credentials: (String, String)) =
-    Props(new PushConnector(hostname, port, uri, credentials))
+  def props(httpConfig: HttpConfig, pairMatcher: ActorRef) = Props(new PushConnector(httpConfig, pairMatcher))
+
+  case class HttpConfig(hostname: String, port: Int, uri: String, credentials: (String, String))
 
   case object Connect
 
