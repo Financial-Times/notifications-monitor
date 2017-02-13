@@ -46,7 +46,7 @@ public class PairMatcher extends UntypedActor {
                 Optional<DatedEntry> pair = pushEntries.stream().filter(p -> p.entry().id().equals(pullEntry.id())).findFirst();
                 if (pair.isPresent()) {
                     log.debug("Found pair for pull entry {}", pullEntry.id());
-                    pushEntries.remove(pullEntries.indexOf(pair.get()));
+                    pushEntries.remove(pushEntries.indexOf(pair.get()));
                 } else {
                     log.debug("Not found pair for pull entry. Adding {}", pullEntry.id());
                     pullEntries.add(new DatedEntry(pullEntry, datedEntry.date()));
