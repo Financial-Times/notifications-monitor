@@ -5,11 +5,12 @@ import akka.actor.Props;
 import akka.actor.UntypedActor;
 import akka.event.Logging;
 import akka.event.LoggingAdapter;
-import akka.http.javadsl.*;
+import akka.http.javadsl.ConnectHttp;
+import akka.http.javadsl.Http;
+import akka.http.javadsl.OutgoingConnection;
 import akka.http.javadsl.model.HttpRequest;
 import akka.http.javadsl.model.HttpResponse;
 import akka.http.javadsl.model.headers.Authorization;
-import akka.http.javadsl.model.headers.BasicHttpCredentials;
 import akka.japi.Creator;
 import akka.stream.ActorMaterializer;
 import akka.stream.Materializer;
@@ -56,7 +57,7 @@ public class PullConnector extends UntypedActor {
 
     private void makeRequest(ZonedDateTime date) {
         HttpRequest request = HttpRequest.create(httpConfig.uri() + "?since=" + date.format(DateTimeFormatter.ISO_INSTANT))
-                .addHeader(Authorization.create(BasicHttpCredentials.create(httpConfig.credentials()._1(), httpConfig.credentials()._2())));
+                .addHeader(Authorization.basic(httpConfig.credentials()._1(), httpConfig.credentials()._2()));
         final CompletionStage<HttpResponse> responseF = Source.single(request)
                 .via(connectionFlow)
                 .runWith(Sink.head(), mat);
