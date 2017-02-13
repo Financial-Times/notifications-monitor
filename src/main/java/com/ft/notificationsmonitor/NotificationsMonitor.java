@@ -4,7 +4,6 @@ import akka.actor.ActorRef;
 import akka.actor.ActorSystem;
 import akka.actor.Cancellable;
 import akka.http.javadsl.Http;
-import com.ft.notificationsmonitor.PullConnector.RequestSinceLast$;
 import com.ft.notificationsmonitor.PushConnector.Connect$;
 import com.ft.notificationsmonitor.PushReader.CancelStreams$;
 import com.ft.notificationsmonitor.model.HttpConfig;
@@ -51,7 +50,7 @@ public class NotificationsMonitor {
                 config.getString("pull-uri"), Tuple2.apply(username, password));
         ActorRef pullConnector = sys.actorOf(PullConnector.props(pullHttpConfig, pairMatcher));
         pullSchedule = sys.scheduler().schedule(Duration.apply(0, TimeUnit.SECONDS) ,
-                Duration.apply(1, TimeUnit.MINUTES), pullConnector, RequestSinceLast$.MODULE$, sys.dispatcher(), ActorRef.noSender());
+                Duration.apply(1, TimeUnit.MINUTES), pullConnector, "RequestSinceLast", sys.dispatcher(), ActorRef.noSender());
         reportSchedule = sys.scheduler().schedule(Duration.apply(1, TimeUnit.MINUTES),
                 Duration.apply(1, TimeUnit.MINUTES), pairMatcher, "Report", sys.dispatcher(), ActorRef.noSender());
         pushConnector.tell(Connect$.MODULE$, ActorRef.noSender());
