@@ -11,23 +11,23 @@ You will need:
   - OS X: `brew install sbt` or
   - Linux: `curl https://bintray.com/sbt/rpm/rpm | sudo tee /etc/yum.repos.d/bintray-sbt-rpm.repo` and `sudo yum install sbt`
 
-To run:
+## To run:
 
 `sbt run`
 
-To develop:
+## To develop (on your machine):
 
 * `sbt compile`
 
 * `sbt test`
 
-To create jars and executables for production use:
+## In production:
 
-`sbt stage`
-
-Then run the generated executable script from `target/universal/stage/bin/notifications-monitor`
-
-Or use the init.d service that's should be installed on the production machine:
-
-`sudo /etc/init.d/notifications-monitor start`
-`sudo /etc/init.d/notifications-monitor stop`
+1. `ssh Your.Name@upp-notifications-monitor.in.ft.com`
+2. Become superuser: `sudo su -`
+3. Navigate to `/opt/notifications-monitor`
+4. `git pull origin master`
+5. Stop the running service: `/etc/init.d/notifications-monitor stop`
+6. `sbt stage`
+7. Start the service: `/etc/init.d/notifications-monitor start`
+7. Check: `/etc/init.d/notifications-monitor status` or `ps aux | grep java`
