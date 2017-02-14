@@ -7,8 +7,6 @@ import akka.actor.{Actor, ActorLogging, ActorRef, PoisonPill, Props}
 import akka.stream.scaladsl.{Keep, Sink, Source}
 import akka.stream.{ActorMaterializer, KillSwitches}
 import akka.util.ByteString
-import com.ft.notificationsmonitor.PushConnector.StreamEnded
-import com.ft.notificationsmonitor.PushReader.{CancelStreams, Read}
 import com.ft.notificationsmonitor.model.{DatedEntry, PushEntry}
 import com.ft.notificationsmonitor.model.NotificationFormats._
 import spray.json.DefaultJsonProtocol._
@@ -25,7 +23,7 @@ class PushReader(private val pairMatcher: ActorRef) extends Actor with ActorLogg
   private val willCancelStreamP = Promise[Done]()
 
   override def receive: Receive = {
-    case Read(source) =>
+    case source: Source =>
       val (killSwitch, doneF) = consumeBodyStream(source)
 
       willCancelStreamP.future.onComplete { _ =>
@@ -35,10 +33,10 @@ class PushReader(private val pairMatcher: ActorRef) extends Actor with ActorLogg
 
       doneF.onComplete { _ =>
         log.info("Stream has ended.")
-        context.parent ! StreamEnded
+        context.parent ! "StreamEnded"
       }
 
-    case CancelStreams =>
+    case "CancelStreams" =>
       willCancelStreamP.complete(Success(Done))
   }
 
@@ -92,6 +90,4 @@ object PushReader {
   def props(pairMatcher: ActorRef) = Props(new PushReader(pairMatcher))
 
   case class Read(body: Source[ByteString, Any])
-
-  case object CancelStreams
 }

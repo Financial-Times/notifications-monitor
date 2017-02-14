@@ -4,7 +4,6 @@ import akka.actor.ActorRef;
 import akka.actor.ActorSystem;
 import akka.actor.Cancellable;
 import akka.http.javadsl.Http;
-import com.ft.notificationsmonitor.PushConnector.Connect$;
 import com.ft.notificationsmonitor.PushReader.CancelStreams$;
 import com.ft.notificationsmonitor.model.HttpConfig;
 import com.typesafe.config.Config;
@@ -53,14 +52,14 @@ public class NotificationsMonitor {
                 Duration.apply(2, TimeUnit.MINUTES), pullConnector, "RequestSinceLast", sys.dispatcher(), ActorRef.noSender());
         reportSchedule = sys.scheduler().schedule(Duration.apply(1, TimeUnit.MINUTES),
                 Duration.apply(3, TimeUnit.MINUTES), pairMatcher, "Report", sys.dispatcher(), ActorRef.noSender());
-        pushConnector.tell(Connect$.MODULE$, ActorRef.noSender());
+        pushConnector.tell("Connect", ActorRef.noSender());
     }
 
     private BoxedUnit shutdown() {
         logger.info("Exiting...");
         pullSchedule.cancel();
         reportSchedule.cancel();
-        pushConnector.tell(CancelStreams$.MODULE$, ActorRef.noSender());
+        pushConnector.tell("CancelStreams", ActorRef.noSender());
         Http.get(sys).shutdownAllConnectionPools()
                 .whenComplete((s, f) -> sys.terminate());
         return BoxedUnit.UNIT;
