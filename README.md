@@ -31,3 +31,5 @@ You will need:
 6. `sbt stage`
 7. Start the service: `/etc/init.d/notifications-monitor start`
 7. Check: `/etc/init.d/notifications-monitor status` or `ps aux | grep java`
+
+Logs are in `/opt/notifications-monitor/logs`
