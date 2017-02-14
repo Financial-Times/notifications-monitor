@@ -60,10 +60,10 @@ public class PairMatcher extends UntypedActor {
     private void reportOneSide(final List<DatedEntry> entries, final String notificationType) {
         List<DatedEntry> toReport = entries.stream().filter(p -> p.date().isBefore(ZonedDateTime.now().minusMinutes(2))).collect(Collectors.toList());
         if (toReport.isEmpty()) {
-            log.info("All {} notifications were matched by pull ones. (Not considering the last two minutes which is tolerated to be inconsistent.)", notificationType);
+            log.info("All {} notifications were matched by pull ones. (Not considering the last {} minutes which is tolerated to be inconsistent.)", notificationType, INCONSISTENT_INTERVAL_TOLERANCE);
         } else {
             toReport.forEach(datedEntry -> {
-                log.warning("No pair for {} notification after 2 minutes. id={} date={}", notificationType, datedEntry.entry().id(), datedEntry.date().format(DateTimeFormatter.ISO_INSTANT));
+                log.warning("No pair for {} notification after {} minutes. id={} date={}", notificationType, INCONSISTENT_INTERVAL_TOLERANCE, datedEntry.entry().id(), datedEntry.date().format(DateTimeFormatter.ISO_INSTANT));
                 entries.remove(datedEntry);
             });
         }
