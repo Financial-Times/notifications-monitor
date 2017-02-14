@@ -30,7 +30,7 @@ public class PairMatcher extends UntypedActor {
     public void onReceive(Object message) {
         if (message instanceof DatedEntry) {
             DatedEntry datedEntry = ((DatedEntry) message);
-            NotificationEntry entry = datedEntry.entry();
+            NotificationEntry entry = datedEntry.getEntry();
             if (entry instanceof PushEntry) {
                 matchEntry(datedEntry, pushEntries, pullEntries, "push");
             } else if (entry instanceof PullEntry) {
@@ -38,32 +38,30 @@ public class PairMatcher extends UntypedActor {
             }
 
         } else if (message.equals("Report")) {
-            log.info("Reporting.");
             reportOneSide(pushEntries, "push");
             reportOneSide(pullEntries, "pull");
-            log.info("Report finished.");
         }
     }
 
     private void matchEntry(final DatedEntry datedEntry, final List<DatedEntry> entries, final List<DatedEntry> oppositeEntries, String notificationType) {
-        final NotificationEntry entry = datedEntry.entry();
-        Optional<DatedEntry> pair = oppositeEntries.stream().filter(p -> p.entry().id().equals(entry.id())).findFirst();
+        final NotificationEntry entry = datedEntry.getEntry();
+        Optional<DatedEntry> pair = oppositeEntries.stream().filter(p -> p.getEntry().getApiUrl().equals(entry.getApiUrl())).findFirst();
         if (pair.isPresent()) {
-            log.debug("Found pair for {} entry {}", notificationType, entry.id());
+            log.debug("Found pair for {} entry {}", notificationType, entry.getId());
             oppositeEntries.remove(pair.get());
         } else {
-            log.debug("Not found pair for {} entry. Adding {}", notificationType, entry.id());
+            log.debug("Not found pair for {} entry. Adding {}", notificationType, entry.getId());
             entries.add(datedEntry);
         }
     }
 
     private void reportOneSide(final List<DatedEntry> entries, final String notificationType) {
-        List<DatedEntry> toReport = entries.stream().filter(p -> p.date().isBefore(ZonedDateTime.now().minusMinutes(2))).collect(Collectors.toList());
+        List<DatedEntry> toReport = entries.stream().filter(p -> p.getDate().isBefore(ZonedDateTime.now().minusMinutes(2))).collect(Collectors.toList());
         if (toReport.isEmpty()) {
             log.info("All {} notifications were matched by pull ones. (Not considering the last {} minutes which is tolerated to be inconsistent.)", notificationType, INCONSISTENT_INTERVAL_TOLERANCE);
         } else {
             toReport.forEach(datedEntry -> {
-                log.warning("No pair for {} notification after {} minutes. id={} date={}", notificationType, INCONSISTENT_INTERVAL_TOLERANCE, datedEntry.entry().id(), datedEntry.date().format(DateTimeFormatter.ISO_INSTANT));
+                log.warning("No pair for {} notification after {} minutes. id={} date={}", notificationType, INCONSISTENT_INTERVAL_TOLERANCE, datedEntry.getEntry().getId(), datedEntry.getDate().format(DateTimeFormatter.ISO_INSTANT));
                 entries.remove(datedEntry);
             });
         }

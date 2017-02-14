@@ -45,7 +45,7 @@ public class PullConnector extends UntypedActor {
     public PullConnector (HttpConfig httpConfig, ActorRef pairMatcher) {
         this.httpConfig = httpConfig;
         this.pairMatcher = pairMatcher;
-        connectionFlow = Http.get(context().system()).outgoingConnection(ConnectHttp.toHostHttps(httpConfig.hostname(), httpConfig.port()));
+        connectionFlow = Http.get(context().system()).outgoingConnection(ConnectHttp.toHostHttps(httpConfig.getHostname(), httpConfig.getPort()));
     }
 
     @Override
@@ -56,17 +56,17 @@ public class PullConnector extends UntypedActor {
     }
 
     private void makeRequest(ZonedDateTime date) {
-        HttpRequest request = HttpRequest.create(httpConfig.uri() + "?since=" + date.format(DateTimeFormatter.ISO_INSTANT))
-                .addHeader(Authorization.basic(httpConfig.credentials()._1(), httpConfig.credentials()._2()));
+        HttpRequest request = HttpRequest.create(httpConfig.getUri() + "?since=" + date.format(DateTimeFormatter.ISO_INSTANT))
+                .addHeader(Authorization.basic(httpConfig.getUsername(), httpConfig.getPassword()));
         final CompletionStage<HttpResponse> responseF = Source.single(request)
                 .via(connectionFlow)
                 .runWith(Sink.head(), mat);
         responseF.whenComplete((response, failure) -> {
             if (failure != null) {
-                log.error(failure, "Failed request. host={} uri={}", httpConfig.hostname(), httpConfig.uri());
+                log.error(failure, "Failed request. host={} uri={}", httpConfig.getHostname(), httpConfig.getUri());
             } else {
                 if (!response.status().equals(OK)) {
-                    log.warning("Response status not ok. Retrying in a few moments... host={} uri={} status={}", httpConfig.hostname(), httpConfig.uri(), response.status().intValue());
+                    log.warning("Response status not ok. Retrying in a few moments... host={} uri={} status={}", httpConfig.getHostname(), httpConfig.getUri(), response.status().intValue());
                 } else {
                     last = ZonedDateTime.now();
                     response.entity().toStrict(5000, mat)

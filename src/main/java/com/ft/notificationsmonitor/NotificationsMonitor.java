@@ -4,13 +4,11 @@ import akka.actor.ActorRef;
 import akka.actor.ActorSystem;
 import akka.actor.Cancellable;
 import akka.http.javadsl.Http;
-import com.ft.notificationsmonitor.PushReader.CancelStreams$;
 import com.ft.notificationsmonitor.model.HttpConfig;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import scala.Tuple2;
 import scala.concurrent.duration.Duration;
 import scala.runtime.BoxedUnit;
 
@@ -43,10 +41,10 @@ public class NotificationsMonitor {
         String password = sensitiveConfig.getString("basic-auth.password");
         ActorRef pairMatcher = sys.actorOf(PairMatcher.props());
         HttpConfig pushHttpConfig = new HttpConfig(config.getString("push-host"), config.getInt("push-port"),
-                config.getString("push-uri"), Tuple2.apply(username, password));
+                config.getString("push-uri"), username, password);
         pushConnector = sys.actorOf(PushConnector.props(pushHttpConfig, pairMatcher));
         HttpConfig pullHttpConfig = new HttpConfig(config.getString("pull-host"), config.getInt("pull-port"),
-                config.getString("pull-uri"), Tuple2.apply(username, password));
+                config.getString("pull-uri"), username, password);
         ActorRef pullConnector = sys.actorOf(PullConnector.props(pullHttpConfig, pairMatcher));
         pullSchedule = sys.scheduler().schedule(Duration.apply(0, TimeUnit.SECONDS) ,
                 Duration.apply(2, TimeUnit.MINUTES), pullConnector, "RequestSinceLast", sys.dispatcher(), ActorRef.noSender());

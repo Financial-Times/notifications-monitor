@@ -18,6 +18,7 @@ import akka.stream.javadsl.Flow;
 import akka.stream.javadsl.Sink;
 import akka.stream.javadsl.Source;
 import com.ft.notificationsmonitor.model.HttpConfig;
+import com.ft.notificationsmonitor.model.Read;
 import scala.concurrent.duration.Duration;
 
 import java.util.concurrent.CompletionStage;
@@ -39,29 +40,29 @@ public class PushConnector extends UntypedActor {
         this.httpConfig = httpConfig;
         this.pairMatcher = pairMatcher;
         reader = context().actorOf(PushReader.props(pairMatcher));
-        connectionFlow = Http.get(context().system()).outgoingConnection(ConnectHttp.toHostHttps(httpConfig.hostname(), httpConfig.port()));
+        connectionFlow = Http.get(context().system()).outgoingConnection(ConnectHttp.toHostHttps(httpConfig.getHostname(), httpConfig.getPort()));
     }
 
     @Override
     public void onReceive(Object message) throws Throwable {
         if (message.equals("Connect")) {
-            HttpRequest request = HttpRequest.create(httpConfig.uri())
-                    .addHeader(Authorization.basic(httpConfig.credentials()._1(), httpConfig.credentials()._2()));
+            HttpRequest request = HttpRequest.create(httpConfig.getUri())
+                    .addHeader(Authorization.basic(httpConfig.getUsername(), httpConfig.getPassword()));
             Source.single(request)
                     .via(connectionFlow)
                     .runWith(Sink.head(), mat)
                     .whenComplete((response, failure) -> {
                         if (failure != null) {
-                            log.error("Failed request. Retrying in a few moments... host={} uri={}", httpConfig.hostname(), httpConfig.uri(), failure);
+                            log.error("Failed request. Retrying in a few moments... host={} uri={}", httpConfig.getHostname(), httpConfig.getUri(), failure);
                             context().system().scheduler().scheduleOnce(Duration.apply(5, TimeUnit.SECONDS), self(), "Connect", context().dispatcher(), self());
                         } else {
                             if (!response.status().equals(OK)) {
-                                log.warning("Response status not ok. Retrying in a few moments... host={} uri={} status={}", httpConfig.hostname(), httpConfig.uri(), response.status().intValue());
+                                log.warning("Response status not ok. Retrying in a few moments... host={} uri={} status={}", httpConfig.getHostname(), httpConfig.getUri(), response.status().intValue());
                                 context().system().scheduler().scheduleOnce(Duration.apply(5, TimeUnit.SECONDS), self(), "Connect", context().dispatcher(), self());
                             } else {
-                                log.info("Connected to push feed. host={} uri={} status={}", httpConfig.hostname(), httpConfig.uri(), response.status().intValue());
+                                log.info("Connected to push feed. host={} uri={} status={}", httpConfig.getHostname(), httpConfig.getUri(), response.status().intValue());
                                 reader = context().actorOf(PushReader.props(pairMatcher));
-                                reader.tell(response.entity().getDataBytes(), self());
+                                reader.tell(new Read(response.entity().getDataBytes()), self());
                             }
                         }
                     });
