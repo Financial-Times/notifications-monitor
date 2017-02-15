@@ -27,6 +27,7 @@ import spray.json.ParserInput;
 
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 
@@ -39,12 +40,12 @@ public class PullConnector extends UntypedActor {
 
     private Flow<HttpRequest, HttpResponse, CompletionStage<OutgoingConnection>> connectionFlow;
     private HttpConfig httpConfig;
-    private ActorRef pairMatcher;
+    private List<ActorRef> pairMatchers;
     private ZonedDateTime last = ZonedDateTime.now();
 
-    public PullConnector (HttpConfig httpConfig, ActorRef pairMatcher) {
+    public PullConnector (HttpConfig httpConfig, List<ActorRef> pairMatchers) {
         this.httpConfig = httpConfig;
-        this.pairMatcher = pairMatcher;
+        this.pairMatchers = pairMatchers;
         connectionFlow = Http.get(context().system()).outgoingConnection(ConnectHttp.toHostHttps(httpConfig.getHostname(), httpConfig.getPort()));
     }
 
@@ -86,19 +87,19 @@ public class PullConnector extends UntypedActor {
             } else {
                 JavaConverters.asJavaCollection(page.notifications()).forEach((entry) -> {
                     log.info(entry.id());
-                    pairMatcher.tell(new DatedEntry(entry, ZonedDateTime.now()), self());
+                    pairMatchers.forEach(pairMatcher -> pairMatcher.tell(new DatedEntry(entry, ZonedDateTime.now()), self()));
                 });
             }
         });
     }
 
-    public static Props props(final HttpConfig httpConfig, final ActorRef pairMatcher) {
+    public static Props props(final HttpConfig httpConfig, final List<ActorRef> pairMatchers) {
         return Props.create(new Creator<PullConnector>() {
             private static final long serialVersionUID = 1L;
 
             @Override
             public PullConnector create() throws Exception {
-                return new PullConnector(httpConfig, pairMatcher);
+                return new PullConnector(httpConfig, pairMatchers);
             }
         });
     }
