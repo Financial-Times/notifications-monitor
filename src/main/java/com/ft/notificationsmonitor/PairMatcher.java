@@ -38,8 +38,8 @@ public class PairMatcher extends UntypedActor {
             }
 
         } else if (message.equals("Report")) {
-            reportOneSide(pushEntries, "push");
-            reportOneSide(pullEntries, "pull");
+            reportOneSide(pushEntries, "push", "pull");
+            reportOneSide(pullEntries, "pull", "push");
         }
     }
 
@@ -55,10 +55,10 @@ public class PairMatcher extends UntypedActor {
         }
     }
 
-    private void reportOneSide(final List<DatedEntry> entries, final String notificationType) {
+    private void reportOneSide(final List<DatedEntry> entries, final String notificationType, final String oppositeNotificationType) {
         List<DatedEntry> toReport = entries.stream().filter(p -> p.getDate().isBefore(ZonedDateTime.now().minusMinutes(2))).collect(Collectors.toList());
         if (toReport.isEmpty()) {
-            log.info("All {} notifications were matched by pull ones. (Not considering the last {} minutes which is tolerated to be inconsistent.)", notificationType, INCONSISTENT_INTERVAL_TOLERANCE);
+            log.info("All {} notifications were matched by {} ones. (Not considering the last {} minutes which is tolerated to be inconsistent.)", notificationType, oppositeNotificationType, INCONSISTENT_INTERVAL_TOLERANCE);
         } else {
             toReport.forEach(datedEntry -> {
                 log.warning("No pair for {} notification after {} minutes. id={} date={}", notificationType, INCONSISTENT_INTERVAL_TOLERANCE, datedEntry.getEntry().getId(), datedEntry.getDate().format(DateTimeFormatter.ISO_INSTANT));
