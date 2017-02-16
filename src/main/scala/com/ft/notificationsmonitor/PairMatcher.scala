@@ -11,53 +11,46 @@ import scala.collection.mutable
 
 class PairMatcher extends Actor with ActorLogging {
 
+  private val InconsistentIntervalTolerance = 3
+
   private val pushEntries = mutable.ArrayBuffer[DatedEntry]()
   private val pullEntries = mutable.ArrayBuffer[DatedEntry]()
 
   override def receive: Receive = {
-
-    case DatedEntry(pushEntry: PushEntry, date: ZonedDateTime) =>
-      pullEntries.find(p => p.entry.id.equals(pushEntry.id)) match {
-        case Some(pair) =>
-          log.debug("Found pair for push entry {}", pushEntry.id)
-          pullEntries.remove(pullEntries.indexOf(pair))
-        case None =>
-          log.debug("Not found pair for push entry. Adding {}", pushEntry.id)
-          pushEntries.append(DatedEntry(pushEntry, date))
-      }
-
-    case DatedEntry(pullEntry: PullEntry, date: ZonedDateTime) =>
-      pushEntries.find(p => p.entry.id.equals(pullEntry.id)) match {
-        case Some(pair) =>
-          log.debug("Found pair for pull entry {}", pullEntry.id)
-          pushEntries.remove(pushEntries.indexOf(pair))
-        case None =>
-          log.debug("Not found pair for pull entry. Adding {}", pullEntry.id)
-          pullEntries.append(DatedEntry(pullEntry, date))
+    case datedEntry: DatedEntry =>
+      datedEntry.entry match {
+        case _: PushEntry =>
+          matchEntry(datedEntry, pushEntries, pullEntries, "push")
+        case _: PullEntry =>
+          matchEntry(datedEntry, pullEntries, pushEntries, "pull")
       }
 
     case Report =>
-      val pushToReport = pushEntries.filter(p => p.date.isBefore(ZonedDateTime.now.minusMinutes(2)))
-      if (pushToReport.isEmpty) {
-        log.info("All push notifications were matched by pull ones. (Not considering the last two minutes which is tolerated to be inconsistent.)")
-      } else {
-        pushToReport.foreach{ datedEntry =>
-          log.warning("No pair for push notification after 2 minutes. id={} date={}", datedEntry.entry.id, datedEntry.date.format(DateTimeFormatter.ISO_INSTANT))
-          pushEntries.remove(pushEntries.indexOf(datedEntry))
-        }
+      reportOneSide(pushEntries, "push", "pull")
+      reportOneSide(pullEntries, "pull", "push")
+  }
 
-      }
+  private def matchEntry(datedEntry: DatedEntry, entries: mutable.ArrayBuffer[DatedEntry], oppositeEntries: mutable.ArrayBuffer[DatedEntry], notificationType: String) {
+    oppositeEntries.find(p => p.entry.id.equals(datedEntry.entry.id)) match {
+      case None =>
+        log.debug("Not found pair for {} entry. Adding {}", notificationType, datedEntry.entry.id)
+        entries.append(datedEntry)
+      case Some(matchedEntry) =>
+        log.debug("Found pair for {} entry {}", notificationType, datedEntry.entry.id)
+        oppositeEntries.remove(oppositeEntries.indexOf(matchedEntry))
+    }
+  }
 
-      val pullToReport = pullEntries.filter(p => p.date.isBefore(ZonedDateTime.now.minusMinutes(2)))
-      if (pullToReport.isEmpty) {
-        log.info("All pull notifications were matched by push ones. (Not considering the last two minutes which is tolerated to be inconsistent.)")
-      } else {
-        pullToReport.foreach{ datedEntry =>
-          log.warning("No pair for (pull) notification after 2 minutes. id={} date={}", datedEntry.entry.id, datedEntry.date.format(DateTimeFormatter.ISO_INSTANT))
-          pullEntries.remove(pullEntries.indexOf(datedEntry))
-        }
+  private def reportOneSide(entries: mutable.ArrayBuffer[DatedEntry], notificationType: String, oppositeNotificationType: String) {
+    val toReport = entries.filter(p => p.date.isBefore(ZonedDateTime.now().minusMinutes(InconsistentIntervalTolerance)))
+    if (toReport.isEmpty) {
+      log.info("All {} notifications were matched by {} ones. (Not considering the last {} minutes which is tolerated to be inconsistent.)", notificationType, oppositeNotificationType, InconsistentIntervalTolerance)
+    } else {
+      toReport.foreach { datedEntry =>
+        log.warning("No pair for {} notification after {} minutes. id={} date={}", notificationType, InconsistentIntervalTolerance, datedEntry.entry.id, datedEntry.date.format(DateTimeFormatter.ISO_INSTANT))
+        entries.remove(entries.indexOf(datedEntry))
       }
-      log.info("Report finished.")
+    }
   }
 }
 
