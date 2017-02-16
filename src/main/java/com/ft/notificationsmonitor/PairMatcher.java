@@ -45,7 +45,7 @@ public class PairMatcher extends UntypedActor {
 
     private void matchEntry(final DatedEntry datedEntry, final List<DatedEntry> entries, final List<DatedEntry> oppositeEntries, String notificationType) {
         final NotificationEntry entry = datedEntry.getEntry();
-        Optional<DatedEntry> pair = oppositeEntries.stream().filter(p -> p.getEntry().getApiUrl().equals(entry.getApiUrl())).findFirst();
+        Optional<DatedEntry> pair = oppositeEntries.stream().filter(p -> p.getEntry().getId().equals(entry.getId())).findFirst();
         if (pair.isPresent()) {
             log.debug("Found pair for {} entry {}", notificationType, entry.getId());
             oppositeEntries.remove(pair.get());
@@ -56,7 +56,7 @@ public class PairMatcher extends UntypedActor {
     }
 
     private void reportOneSide(final List<DatedEntry> entries, final String notificationType, final String oppositeNotificationType) {
-        List<DatedEntry> toReport = entries.stream().filter(p -> p.getDate().isBefore(ZonedDateTime.now().minusMinutes(2))).collect(Collectors.toList());
+        List<DatedEntry> toReport = entries.stream().filter(p -> p.getDate().isBefore(ZonedDateTime.now().minusMinutes(INCONSISTENT_INTERVAL_TOLERANCE))).collect(Collectors.toList());
         if (toReport.isEmpty()) {
             log.info("All {} notifications were matched by {} ones. (Not considering the last {} minutes which is tolerated to be inconsistent.)", notificationType, oppositeNotificationType, INCONSISTENT_INTERVAL_TOLERANCE);
         } else {
