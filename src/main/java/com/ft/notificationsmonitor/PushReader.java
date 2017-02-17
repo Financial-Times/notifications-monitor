@@ -90,7 +90,6 @@ public class PushReader extends UntypedActor {
 
     private void parseLines(List<String> lines) {
         lines.stream().map(line -> {
-            log.info(line);
             if (line.startsWith("data: [")) {
                 return line.substring(7, line.length() - 1);
             }

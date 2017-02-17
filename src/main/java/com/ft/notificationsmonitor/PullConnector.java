@@ -69,6 +69,7 @@ public class PullConnector extends UntypedActor {
                 if (!response.status().equals(OK)) {
                     log.warning("Response status not ok. Retrying in a few moments... host={} uri={} status={}", httpConfig.getHostname(), httpConfig.getUri(), response.status().intValue());
                 } else {
+                    log.info("heartbeat");
                     last = ZonedDateTime.now();
                     response.entity().toStrict(5000, mat)
                             .thenAccept(httpEntity -> parsePage(httpEntity.getData().utf8String()));

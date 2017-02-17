@@ -1,6 +1,7 @@
 package com.ft.notificationsmonitor;
 
 import akka.actor.ActorRef;
+import akka.actor.ActorSelection;
 import akka.actor.ActorSystem;
 import akka.actor.Cancellable;
 import akka.http.javadsl.Http;
@@ -35,7 +36,7 @@ public class NotificationsMonitor {
     }
 
     private void run() {
-        sys = ActorSystem.create("notifications-monitor");
+        sys = ActorSystem.create("notificationsMonitor");
 
         logger.info("Starting up...");
 
@@ -43,19 +44,19 @@ public class NotificationsMonitor {
         Config config = ConfigFactory.load().withFallback(sensitiveConfig);
         String username = sensitiveConfig.getString("basic-auth.username");
         String password = sensitiveConfig.getString("basic-auth.password");
-        ActorRef pushPullMatcher = sys.actorOf(PairMatcher.props("push", "pull"), "matcher-push-pull");
-        ActorRef pullPullMatcher = sys.actorOf(PairMatcher.props("pull", "long-pull"), "matcher-pull-pull");
+        ActorRef pushPullMatcher = sys.actorOf(PairMatcher.props("push", "pull"), "matcherPushPull");
+        ActorRef pullPullMatcher = sys.actorOf(PairMatcher.props("pull", "longPull"), "matcherPullPull");
         HttpConfig pushHttpConfig = new HttpConfig(config.getString("push-host"), config.getInt("push-port"),
                 config.getString("push-uri"), username, password);
-        pushConnector = sys.actorOf(PushConnector.props(pushHttpConfig, pushPullMatcher), "push-connector");
+        pushConnector = sys.actorOf(PushConnector.props(pushHttpConfig, pushPullMatcher), "pushConnector");
         HttpConfig pullHttpConfig = new HttpConfig(config.getString("pull-host"), config.getInt("pull-port"),
                 config.getString("pull-uri"), username, password);
-        ActorRef pullConnector = sys.actorOf(PullConnector.props(pullHttpConfig, Arrays.asList(pushPullMatcher, pullPullMatcher)), "pull-connector");
-        ActorRef longPullConnector = sys.actorOf(PullConnector.props(pullHttpConfig, Collections.singletonList(pullPullMatcher)), "long-pull-connector");
+        ActorRef pullConnector = sys.actorOf(PullConnector.props(pullHttpConfig, Arrays.asList(pushPullMatcher, pullPullMatcher)), "pullConnector");
+        ActorRef longPullConnector = sys.actorOf(PullConnector.props(pullHttpConfig, Collections.singletonList(pullPullMatcher)), "longPullConnector");
         pullSchedule = sys.scheduler().schedule(Duration.apply(0, TimeUnit.SECONDS) ,
-                Duration.apply(5, TimeUnit.SECONDS), pullConnector, "RequestSinceLast", sys.dispatcher(), ActorRef.noSender());
+                Duration.apply(2, TimeUnit.MINUTES), pullConnector, "RequestSinceLast", sys.dispatcher(), ActorRef.noSender());
         longPullSchedule = sys.scheduler().schedule(Duration.apply(0, TimeUnit.SECONDS) ,
-                Duration.apply(10, TimeUnit.SECONDS), longPullConnector, "RequestSinceLast", sys.dispatcher(), ActorRef.noSender());
+                Duration.apply(10, TimeUnit.MINUTES), longPullConnector, "RequestSinceLast", sys.dispatcher(), ActorRef.noSender());
         pushPullMatcherReport = sys.scheduler().schedule(Duration.apply(3, TimeUnit.MINUTES),
                 Duration.apply(3, TimeUnit.MINUTES), pushPullMatcher, "Report", sys.dispatcher(), ActorRef.noSender());
         pullPullMatcherReport = sys.scheduler().schedule(Duration.apply(0, TimeUnit.SECONDS),
