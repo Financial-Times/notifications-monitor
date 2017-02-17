@@ -36,7 +36,7 @@ import static akka.http.javadsl.model.StatusCodes.OK;
 public class PullConnector extends UntypedActor {
 
     private LoggingAdapter log = Logging.getLogger(getContext().system(), this);
-    private Materializer mat = ActorMaterializer.create(context());
+    private Materializer mat = ActorMaterializer.create(getContext());
 
     private Flow<HttpRequest, HttpResponse, CompletionStage<OutgoingConnection>> connectionFlow;
     private HttpConfig httpConfig;

@@ -27,7 +27,7 @@ import static akka.http.javadsl.model.StatusCodes.OK;
 public class PushConnector extends UntypedActor {
 
     private LoggingAdapter log = Logging.getLogger(getContext().system(), this);
-    private Materializer mat = ActorMaterializer.create(context());
+    private Materializer mat = ActorMaterializer.create(getContext());
     private HttpConfig httpConfig;
     private ActorRef pairMatcher;
     private ActorRef reader;
@@ -53,15 +53,15 @@ public class PushConnector extends UntypedActor {
                     .whenComplete((response, failure) -> {
                         if (failure != null) {
                             log.error("Failed request. Retrying in a few moments... host={} uri={}", httpConfig.getHostname(), httpConfig.getUri(), failure);
-                            context().system().scheduler().scheduleOnce(Duration.apply(5, TimeUnit.SECONDS), self(), "Connect", context().dispatcher(), self());
+                            getContext().system().scheduler().scheduleOnce(Duration.apply(5, TimeUnit.SECONDS), self(), "Connect", getContext().dispatcher(), self());
                         } else {
                             if (!response.status().equals(OK)) {
                                 log.warning("Response status not ok. Retrying in a few moments... host={} uri={} status={}", httpConfig.getHostname(), httpConfig.getUri(), response.status().intValue());
-                                context().system().scheduler().scheduleOnce(Duration.apply(5, TimeUnit.SECONDS), self(), "Connect", context().dispatcher(), self());
+                                getContext().system().scheduler().scheduleOnce(Duration.apply(5, TimeUnit.SECONDS), self(), "Connect", getContext().dispatcher(), self());
                             } else {
                                 log.info("Connected to push feed. host={} uri={} status={}", httpConfig.getHostname(), httpConfig.getUri(), response.status().intValue());
-                                reader = context().actorOf(PushReader.props(pairMatcher), "push-reader");
-                                context().watch(reader);
+                                reader = getContext().actorOf(PushReader.props(pairMatcher), "push-reader");
+                                getContext().watch(reader);
                                 reader.tell(new Read(response.entity().getDataBytes()), self());
                             }
                         }

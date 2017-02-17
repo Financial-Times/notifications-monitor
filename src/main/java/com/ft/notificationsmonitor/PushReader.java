@@ -33,7 +33,7 @@ import java.util.concurrent.CompletionStage;
 public class PushReader extends UntypedActor {
 
     private LoggingAdapter log = Logging.getLogger(getContext().system(), this);
-    private Materializer mat = ActorMaterializer.create(context());
+    private Materializer mat = ActorMaterializer.create(getContext());
 
     private ActorRef pairMatcher;
     private CompletableFuture<Done> willCancelStreamP = new CompletableFuture<>();
