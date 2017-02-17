@@ -7,8 +7,6 @@ import akka.event.LoggingAdapter;
 import akka.japi.Creator;
 import com.ft.notificationsmonitor.model.DatedEntry;
 import com.ft.notificationsmonitor.model.NotificationEntry;
-import com.ft.notificationsmonitor.model.PullEntry;
-import com.ft.notificationsmonitor.model.PushEntry;
 
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
@@ -23,23 +21,31 @@ public class PairMatcher extends UntypedActor {
 
     private LoggingAdapter log = Logging.getLogger(getContext().system(), this);
 
-    private List<DatedEntry> pushEntries = new LinkedList<>();
-    private List<DatedEntry> pullEntries = new LinkedList<>();
+    private String typeA;
+    private String typeB;
+    private List<DatedEntry> aEntries = new LinkedList<>();
+    private List<DatedEntry> bEntries = new LinkedList<>();
+
+    public PairMatcher(String typeA, String typeB) {
+        this.typeA = typeA;
+        this.typeB = typeB;
+    }
 
     @Override
     public void onReceive(Object message) {
         if (message instanceof DatedEntry) {
             DatedEntry datedEntry = ((DatedEntry) message);
-            NotificationEntry entry = datedEntry.getEntry();
-            if (entry instanceof PushEntry) {
-                matchEntry(datedEntry, pushEntries, pullEntries, "push");
-            } else if (entry instanceof PullEntry) {
-                matchEntry(datedEntry, pullEntries, pushEntries, "pull");
+            if (sender().path().name().startsWith(typeA)) {
+                matchEntry(datedEntry, aEntries, bEntries, typeA);
+            } else if (sender().path().name().startsWith(typeB)) {
+                matchEntry(datedEntry, bEntries, aEntries, typeB);
+            } else {
+                log.warning("What to do with {}", sender().path().name());
             }
 
         } else if (message.equals("Report")) {
-            reportOneSide(pushEntries, "push", "pull");
-            reportOneSide(pullEntries, "pull", "push");
+            reportOneSide(aEntries, typeA, typeB);
+            reportOneSide(bEntries, typeB, typeA);
         }
     }
 
@@ -67,13 +73,13 @@ public class PairMatcher extends UntypedActor {
         }
     }
 
-    public static Props props() {
+    public static Props props(final String aPrefix, final String bPrefix) {
         return Props.create(new Creator<PairMatcher>() {
             private static final long serialVersionUID = 1L;
 
             @Override
             public PairMatcher create() throws Exception {
-                return new PairMatcher();
+                return new PairMatcher(aPrefix, bPrefix);
             }
         });
     }

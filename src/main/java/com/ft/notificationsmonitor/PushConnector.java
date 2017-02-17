@@ -39,7 +39,7 @@ public class PushConnector extends UntypedActor {
     public PushConnector(HttpConfig httpConfig, ActorRef pairMatcher) {
         this.httpConfig = httpConfig;
         this.pairMatcher = pairMatcher;
-        reader = context().actorOf(PushReader.props(pairMatcher));
+        reader = context().actorOf(PushReader.props(pairMatcher), "push-reader");
         connectionFlow = Http.get(context().system()).outgoingConnection(ConnectHttp.toHostHttps(httpConfig.getHostname(), httpConfig.getPort()));
     }
 
@@ -61,7 +61,7 @@ public class PushConnector extends UntypedActor {
                                 context().system().scheduler().scheduleOnce(Duration.apply(5, TimeUnit.SECONDS), self(), "Connect", context().dispatcher(), self());
                             } else {
                                 log.info("Connected to push feed. host={} uri={} status={}", httpConfig.getHostname(), httpConfig.getUri(), response.status().intValue());
-                                reader = context().actorOf(PushReader.props(pairMatcher));
+                                reader = context().actorOf(PushReader.props(pairMatcher), "push-reader");
                                 reader.tell(new Read(response.entity().getDataBytes()), self());
                             }
                         }
@@ -74,6 +74,10 @@ public class PushConnector extends UntypedActor {
                 self().tell("Connect", self());
             }
         }
+    }
+
+    private ActorRef createReader() {
+        return context().actorOf(PushReader.props(pairMatcher), "push-reader");
     }
 
     public static Props props(final HttpConfig httpConfig, final ActorRef pairMatcher) {
