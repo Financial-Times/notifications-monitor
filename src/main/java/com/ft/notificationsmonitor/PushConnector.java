@@ -1,8 +1,6 @@
 package com.ft.notificationsmonitor;
 
-import akka.actor.ActorRef;
-import akka.actor.Props;
-import akka.actor.UntypedActor;
+import akka.actor.*;
 import akka.event.Logging;
 import akka.event.LoggingAdapter;
 import akka.http.javadsl.ConnectHttp;
@@ -40,6 +38,7 @@ public class PushConnector extends UntypedActor {
         this.httpConfig = httpConfig;
         this.pairMatcher = pairMatcher;
         reader = context().actorOf(PushReader.props(pairMatcher), "push-reader");
+        context().watch(reader);
         connectionFlow = Http.get(context().system()).outgoingConnection(ConnectHttp.toHostHttps(httpConfig.getHostname(), httpConfig.getPort()));
     }
 
@@ -62,6 +61,7 @@ public class PushConnector extends UntypedActor {
                             } else {
                                 log.info("Connected to push feed. host={} uri={} status={}", httpConfig.getHostname(), httpConfig.getUri(), response.status().intValue());
                                 reader = context().actorOf(PushReader.props(pairMatcher), "push-reader");
+                                context().watch(reader);
                                 reader.tell(new Read(response.entity().getDataBytes()), self());
                             }
                         }
@@ -73,6 +73,8 @@ public class PushConnector extends UntypedActor {
             if (!cancelStreams) {
                 self().tell("Connect", self());
             }
+        } else if (message instanceof Terminated) {
+            log.warning("{} dead.", ((Terminated) message).actor().path());
         }
     }
 
