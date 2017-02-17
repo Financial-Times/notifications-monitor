@@ -87,7 +87,8 @@ public class PullConnector extends UntypedActor {
             } else {
                 JavaConverters.asJavaCollection(page.notifications()).forEach((entry) -> {
                     log.info(entry.id());
-                    pairMatchers.forEach(pairMatcher -> pairMatcher.tell(new DatedEntry(entry, ZonedDateTime.now()), self()));
+                    DatedEntry datedEntry = new DatedEntry(entry, ZonedDateTime.now());
+                    pairMatchers.forEach(pairMatcher -> pairMatcher.tell(datedEntry, self()));
                 });
             }
         });

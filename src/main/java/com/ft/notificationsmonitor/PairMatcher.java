@@ -73,13 +73,13 @@ public class PairMatcher extends UntypedActor {
         }
     }
 
-    public static Props props(final String aPrefix, final String bPrefix) {
+    public static Props props(final String typeA, final String typeB) {
         return Props.create(new Creator<PairMatcher>() {
             private static final long serialVersionUID = 1L;
 
             @Override
             public PairMatcher create() throws Exception {
-                return new PairMatcher(aPrefix, bPrefix);
+                return new PairMatcher(typeA, typeB);
             }
         });
     }

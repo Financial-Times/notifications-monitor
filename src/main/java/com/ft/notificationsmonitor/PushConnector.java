@@ -78,10 +78,6 @@ public class PushConnector extends UntypedActor {
         }
     }
 
-    private ActorRef createReader() {
-        return context().actorOf(PushReader.props(pairMatcher), "push-reader");
-    }
-
     public static Props props(final HttpConfig httpConfig, final ActorRef pairMatcher) {
         return Props.create(new Creator<PushConnector>() {
             private static final long serialVersionUID = 1L;
