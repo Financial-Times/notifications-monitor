@@ -53,10 +53,10 @@ public class PairMatcher extends UntypedActor {
         final NotificationEntry entry = datedEntry.getEntry();
         Optional<DatedEntry> pair = oppositeEntries.stream().filter(p -> p.getEntry().getId().equals(entry.getId())).findFirst();
         if (pair.isPresent()) {
-            log.debug("Found pair for {} entry {}", notificationType, entry.getId());
+            log.debug("Matched {} entry {}", notificationType, entry.getId());
             oppositeEntries.remove(pair.get());
         } else {
-            log.debug("Not found pair for {} entry. Adding {}", notificationType, entry.getId());
+            log.debug("Adding {} entry {}", notificationType, entry.getId());
             entries.add(datedEntry);
         }
     }

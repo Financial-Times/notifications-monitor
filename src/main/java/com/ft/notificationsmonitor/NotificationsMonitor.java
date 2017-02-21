@@ -57,10 +57,10 @@ public class NotificationsMonitor {
                 Duration.apply(2, TimeUnit.MINUTES), pullConnector, "RequestSinceLast", sys.dispatcher(), ActorRef.noSender());
         longPullSchedule = sys.scheduler().schedule(Duration.apply(0, TimeUnit.SECONDS) ,
                 Duration.apply(10, TimeUnit.MINUTES), longPullConnector, "RequestSinceLast", sys.dispatcher(), ActorRef.noSender());
-        pushPullMatcherReport = sys.scheduler().schedule(Duration.apply(3, TimeUnit.MINUTES),
-                Duration.apply(3, TimeUnit.MINUTES), pushPullMatcher, "Report", sys.dispatcher(), ActorRef.noSender());
-        pullPullMatcherReport = sys.scheduler().schedule(Duration.apply(0, TimeUnit.SECONDS),
-                Duration.apply(3, TimeUnit.MINUTES), pullPullMatcher, "Report", sys.dispatcher(), ActorRef.noSender());
+        pushPullMatcherReport = sys.scheduler().schedule(Duration.apply(250, TimeUnit.SECONDS),
+                Duration.apply(4, TimeUnit.MINUTES), pushPullMatcher, "Report", sys.dispatcher(), ActorRef.noSender());
+        pullPullMatcherReport = sys.scheduler().schedule(Duration.apply(610, TimeUnit.SECONDS),
+                Duration.apply(10, TimeUnit.MINUTES), pullPullMatcher, "Report", sys.dispatcher(), ActorRef.noSender());
         pushConnector.tell("Connect", ActorRef.noSender());
     }
 

@@ -20,6 +20,7 @@ import akka.stream.javadsl.Source;
 import com.ft.notificationsmonitor.model.DatedEntry;
 import com.ft.notificationsmonitor.model.HttpConfig;
 import com.ft.notificationsmonitor.model.NotificationFormats;
+import com.ft.notificationsmonitor.model.PullEntry;
 import scala.collection.JavaConverters;
 import spray.json.JsValue;
 import spray.json.JsonParser;
@@ -27,6 +28,7 @@ import spray.json.ParserInput;
 
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
@@ -69,7 +71,6 @@ public class PullConnector extends UntypedActor {
                 if (!response.status().equals(OK)) {
                     log.warning("Response status not ok. Retrying in a few moments... host={} uri={} status={}", httpConfig.getHostname(), httpConfig.getUri(), response.status().intValue());
                 } else {
-                    log.info("heartbeat");
                     last = ZonedDateTime.now();
                     response.entity().toStrict(5000, mat)
                             .thenAccept(httpEntity -> parsePage(httpEntity.getData().utf8String()));
@@ -86,11 +87,16 @@ public class PullConnector extends UntypedActor {
             if (failure != null) {
                 log.error(failure, "Error deserializing notifications response: {}", pageText);
             } else {
-                JavaConverters.asJavaCollection(page.notifications()).forEach((entry) -> {
-                    log.info(entry.id());
-                    DatedEntry datedEntry = new DatedEntry(entry, ZonedDateTime.now());
-                    pairMatchers.forEach(pairMatcher -> pairMatcher.tell(datedEntry, self()));
-                });
+                final Collection<PullEntry> notifications = JavaConverters.asJavaCollection(page.notifications());
+                if (notifications.isEmpty()) {
+                    log.info("heartbeat");
+                } else {
+                    notifications.forEach(entry -> {
+                        log.info(entry.id());
+                        final DatedEntry datedEntry = new DatedEntry(entry, ZonedDateTime.now());
+                        pairMatchers.forEach(pairMatcher -> pairMatcher.tell(datedEntry, self()));
+                    });
+                }
             }
         });
     }
