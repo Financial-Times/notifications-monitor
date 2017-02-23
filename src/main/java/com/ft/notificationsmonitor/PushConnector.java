@@ -32,7 +32,8 @@ public class PushConnector extends UntypedActor {
     private ActorRef pairMatcher;
     private ActorRef reader;
     private Flow<HttpRequest, HttpResponse, CompletionStage<OutgoingConnection>> connectionFlow;
-    private boolean cancelStreams = false;
+    private Cancellable heartbeatMonitor;
+    private boolean cancelAllStreams = false;
 
     public PushConnector(HttpConfig httpConfig, ActorRef pairMatcher) {
         this.httpConfig = httpConfig;
@@ -61,14 +62,18 @@ public class PushConnector extends UntypedActor {
                                 reader = getContext().actorOf(PushReader.props(pairMatcher), "pushReader");
                                 getContext().watch(reader);
                                 reader.tell(new Read(response.entity().getDataBytes()), self());
+                                heartbeatMonitor = getContext().system().scheduler().schedule(Duration.apply(1, TimeUnit.MINUTES) ,
+                                        Duration.apply(1, TimeUnit.MINUTES), reader, "CheckHeartbeat", getContext().dispatcher(), ActorRef.noSender());
                             }
                         }
                     });
-        } else if (message.equals("CancelStreams")) {
-            cancelStreams = true;
-            reader.tell("CancelStreams", self());
+        } else if (message.equals("CancelAllStreams")) {
+            cancelAllStreams = true;
+            reader.tell("CancelStream", self());
         } else if (message.equals("StreamEnded")) {
-            if (!cancelStreams) {
+            reader.tell(PoisonPill$.MODULE$, self());
+            heartbeatMonitor.cancel();
+            if (!cancelAllStreams) {
                 self().tell("Connect", self());
             }
         } else if (message instanceof Terminated) {

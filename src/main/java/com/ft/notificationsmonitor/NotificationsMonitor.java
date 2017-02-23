@@ -70,7 +70,7 @@ public class NotificationsMonitor {
         longPullSchedule.cancel();
         pushPullMatcherReport.cancel();
         pullPullMatcherReport.cancel();
-        pushConnector.tell("CancelStreams", ActorRef.noSender());
+        pushConnector.tell("CancelAllStreams", ActorRef.noSender());
         Http.get(sys).shutdownAllConnectionPools()
                 .whenComplete((s, f) -> sys.terminate());
         return BoxedUnit.UNIT;

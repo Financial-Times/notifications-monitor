@@ -25,6 +25,7 @@ import spray.json.JsonParser;
 import spray.json.ParserInput;
 
 import java.time.ZonedDateTime;
+import java.time.temporal.TemporalUnit;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -36,7 +37,8 @@ public class PushReader extends UntypedActor {
     private Materializer mat = ActorMaterializer.create(getContext());
 
     private ActorRef pairMatcher;
-    private CompletableFuture<Done> willCancelStreamP = new CompletableFuture<>();
+    private CompletableFuture<Done> willCancelStreamP;
+    private ZonedDateTime heartbeat = ZonedDateTime.now();
 
     public PushReader(ActorRef pairMatcher) {
         this.pairMatcher = pairMatcher;
@@ -50,15 +52,22 @@ public class PushReader extends UntypedActor {
             final Pair<UniqueKillSwitch, CompletionStage<Done>> killSwitchAndDone = consumeBodyStream(body);
             final UniqueKillSwitch killSwitch = killSwitchAndDone.first();
             CompletionStage<Done> done = killSwitchAndDone.second();
-            willCancelStreamP.thenAccept( d -> {
+            willCancelStreamP = new CompletableFuture<>();
+            willCancelStreamP.thenAccept(d -> {
                 killSwitch.shutdown();
-                self().tell(PoisonPill$.MODULE$, self());
+
             });
-            done.thenAccept( d -> {
+            done.thenAccept(d -> {
                 log.info("Stream has ended.");
                 context().parent().tell("StreamEnded", self());
             });
-        } else if (message.equals("CancelStreams")) {
+        } else if (message.equals("CheckHeartbeat")) {
+            if (heartbeat.isBefore(ZonedDateTime.now().minusMinutes(1))) {
+                log.warning("Missed out heartbeats for more than 1 minutes. Cancelling current stream and reconnecting...");
+                willCancelStreamP.complete(Done.getInstance());
+            }
+        } else if (message.equals("CancelStream")) {
+            killSwitch.
             willCancelStreamP.complete(Done.getInstance());
         }
     }
@@ -95,6 +104,7 @@ public class PushReader extends UntypedActor {
             }
             return line;
         }).forEach( line -> {
+            heartbeat = ZonedDateTime.now();
             if (line.isEmpty()) {
                 log.info("heartbeat");
             } else {
