@@ -18,6 +18,8 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.concurrent.TimeUnit;
 
+import static com.ft.notificationsmonitor.PullConnector.REQUEST_SINCE_LAST;
+
 public class NotificationsMonitor {
 
     private static Logger logger = LoggerFactory.getLogger(NotificationsMonitor.class);
@@ -51,12 +53,13 @@ public class NotificationsMonitor {
         pushConnector = sys.actorOf(PushConnector.props(pushHttpConfig, pushPullMatcher), "pushConnector");
         HttpConfig pullHttpConfig = new HttpConfig(config.getString("pull-host"), config.getInt("pull-port"),
                 config.getString("pull-uri"), username, password);
-        ActorRef pullConnector = sys.actorOf(PullConnector.props(pullHttpConfig, Arrays.asList(pushPullMatcher, pullPullMatcher)), "pullConnector");
-        ActorRef longPullConnector = sys.actorOf(PullConnector.props(pullHttpConfig, Collections.singletonList(pullPullMatcher)), "longPullConnector");
+        PullHttp pullHttp = new PullHttp(sys, pullHttpConfig);
+        ActorRef pullConnector = sys.actorOf(PullConnector.props(pullHttp, Arrays.asList(pushPullMatcher, pullPullMatcher)), "pullConnector");
+        ActorRef longPullConnector = sys.actorOf(PullConnector.props(pullHttp, Collections.singletonList(pullPullMatcher)), "longPullConnector");
         pullSchedule = sys.scheduler().schedule(Duration.apply(0, TimeUnit.SECONDS) ,
-                Duration.apply(2, TimeUnit.MINUTES), pullConnector, "RequestSinceLast", sys.dispatcher(), ActorRef.noSender());
+                Duration.apply(2, TimeUnit.MINUTES), pullConnector, REQUEST_SINCE_LAST, sys.dispatcher(), ActorRef.noSender());
         longPullSchedule = sys.scheduler().schedule(Duration.apply(0, TimeUnit.SECONDS) ,
-                Duration.apply(10, TimeUnit.MINUTES), longPullConnector, "RequestSinceLast", sys.dispatcher(), ActorRef.noSender());
+                Duration.apply(10, TimeUnit.MINUTES), longPullConnector, REQUEST_SINCE_LAST, sys.dispatcher(), ActorRef.noSender());
         pushPullMatcherReport = sys.scheduler().schedule(Duration.apply(250, TimeUnit.SECONDS),
                 Duration.apply(4, TimeUnit.MINUTES), pushPullMatcher, "Report", sys.dispatcher(), ActorRef.noSender());
         pullPullMatcherReport = sys.scheduler().schedule(Duration.apply(610, TimeUnit.SECONDS),
