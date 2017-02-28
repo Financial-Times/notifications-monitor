@@ -2,7 +2,6 @@ package com.ft.notificationsmonitor;
 
 import akka.Done;
 import akka.actor.ActorRef;
-import akka.actor.PoisonPill$;
 import akka.actor.Props;
 import akka.actor.UntypedActor;
 import akka.event.Logging;
@@ -25,7 +24,6 @@ import spray.json.JsonParser;
 import spray.json.ParserInput;
 
 import java.time.ZonedDateTime;
-import java.time.temporal.TemporalUnit;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -57,17 +55,19 @@ public class PushReader extends UntypedActor {
                 killSwitch.shutdown();
 
             });
-            done.thenAccept(d -> {
+            done.exceptionally(ex -> {
+                log.error(ex, "Stream has ended exceptionally.");
+                return Done.getInstance();
+            }).thenAccept(d -> {
                 log.info("Stream has ended.");
                 context().parent().tell("StreamEnded", self());
             });
         } else if (message.equals("CheckHeartbeat")) {
             if (heartbeat.isBefore(ZonedDateTime.now().minusMinutes(1))) {
-                log.warning("Missed out heartbeats for more than 1 minutes. Cancelling current stream and reconnecting...");
-                willCancelStreamP.complete(Done.getInstance());
+//                log.warning("Missed out heartbeats for more than 1 minutes. Cancelling current stream...");
+                willCancelStreamP.completeExceptionally(new RuntimeException("Missed out heartbeats for more than 1 minutes."));
             }
         } else if (message.equals("CancelStream")) {
-            killSwitch.
             willCancelStreamP.complete(Done.getInstance());
         }
     }

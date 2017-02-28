@@ -52,7 +52,7 @@ public class PushConnector extends UntypedActor {
                     .whenComplete((response, failure) -> {
                         if (failure != null) {
                             log.error("Failed request. Retrying in a few moments... host={} uri={}", httpConfig.getHostname(), httpConfig.getUri(), failure);
-                            getContext().system().scheduler().scheduleOnce(Duration.apply(5, TimeUnit.SECONDS), self(), "Connect", getContext().dispatcher(), self());
+                            getContext().system().scheduler().scheduleOnce(Duration.apply(15, TimeUnit.SECONDS), self(), "Connect", getContext().dispatcher(), self());
                         } else {
                             if (!response.status().equals(OK)) {
                                 log.warning("Response status not ok. Retrying in a few moments... host={} uri={} status={}", httpConfig.getHostname(), httpConfig.getUri(), response.status().intValue());
@@ -63,7 +63,7 @@ public class PushConnector extends UntypedActor {
                                 getContext().watch(reader);
                                 reader.tell(new Read(response.entity().getDataBytes()), self());
                                 heartbeatMonitor = getContext().system().scheduler().schedule(Duration.apply(1, TimeUnit.MINUTES) ,
-                                        Duration.apply(1, TimeUnit.MINUTES), reader, "CheckHeartbeat", getContext().dispatcher(), ActorRef.noSender());
+                                        Duration.apply(1, TimeUnit.MINUTES), reader, "CheckHeartbeat", getContext().dispatcher(), getSelf());
                             }
                         }
                     });
@@ -71,8 +71,8 @@ public class PushConnector extends UntypedActor {
             cancelAllStreams = true;
             reader.tell("CancelStream", self());
         } else if (message.equals("StreamEnded")) {
-            reader.tell(PoisonPill$.MODULE$, self());
             heartbeatMonitor.cancel();
+            reader.tell(PoisonPill$.MODULE$, self());
             if (!cancelAllStreams) {
                 self().tell("Connect", self());
             }
