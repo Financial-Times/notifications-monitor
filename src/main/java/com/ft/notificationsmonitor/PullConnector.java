@@ -11,7 +11,6 @@ import akka.japi.Creator;
 import akka.japi.Pair;
 import com.ft.notificationsmonitor.http.PullHttp;
 import com.ft.notificationsmonitor.model.DatedEntry;
-import com.ft.notificationsmonitor.model.Link;
 import com.ft.notificationsmonitor.model.PullEntry;
 import com.ft.notificationsmonitor.model.PullPage;
 import scala.collection.JavaConverters;
@@ -20,7 +19,6 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Collection;
 import java.util.List;
-import java.util.Optional;
 import java.util.concurrent.CompletionStage;
 
 public class PullConnector extends UntypedActor {
@@ -68,7 +66,7 @@ public class PullConnector extends UntypedActor {
             }
         } else {
             notifications.forEach(entry -> {
-                log.info(entry.id());
+                log.info("id={} tid={} lastModified=\"{}\"", entry.id(), entry.publishReference(), entry.lastModified().format(DateTimeFormatter.ISO_INSTANT));
                 final DatedEntry datedEntry = new DatedEntry(entry, ZonedDateTime.now());
                 pairMatchers.forEach(pairMatcher -> pairMatcher.tell(datedEntry, self()));
             });
@@ -76,18 +74,16 @@ public class PullConnector extends UntypedActor {
     }
 
     private void parseLinkAndScheduleNextRequest(final PullPage page) {
-        final Collection<Link> links = JavaConverters.asJavaCollection(page.links());
-        Optional<Query> currentQuery = links.stream().findFirst().map(link -> {
-            String href = link.href();
-            Uri uri = Uri.create(href);
-            return uri.query();
-        });
-        currentQuery.ifPresent(query -> {
-            if (!query.equals(lastQuery)) {
-                this.lastQuery = query;
-                getSelf().tell(CONTINUE_REQUESTING_SINCE_LAST, getSelf());
-            }
-        });
+        JavaConverters.asJavaCollection(page.links())
+                .stream()
+                .findFirst()
+                .map(link -> Uri.create(link.href()).query())
+                .ifPresent(query -> {
+                    if (!query.equals(lastQuery)) {
+                        this.lastQuery = query;
+                        getSelf().tell(CONTINUE_REQUESTING_SINCE_LAST, getSelf());
+                    }
+                });
     }
 
     public static Props props(final PullHttp pullHttp, final List<ActorRef> pairMatchers) {

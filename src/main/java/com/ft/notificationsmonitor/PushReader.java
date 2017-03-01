@@ -15,6 +15,7 @@ import spray.json.JsonParser;
 import spray.json.ParserInput;
 
 import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.concurrent.CompletableFuture;
 
 import static com.ft.notificationsmonitor.PushConnector.READER_FAILED;
@@ -86,7 +87,7 @@ public class PushReader extends UntypedActor {
             if (failure != null) {
                 log.error(failure, "Error deserializing notifications response");
             } else {
-                log.info(entry.id());
+                log.info("id={} tid={} lastModified=\"{}\"", entry.id(), entry.publishReference(), entry.lastModified().format(DateTimeFormatter.ISO_INSTANT));
                 pairMatcher.tell(new DatedEntry(entry, ZonedDateTime.now()), self());
             }
         });
