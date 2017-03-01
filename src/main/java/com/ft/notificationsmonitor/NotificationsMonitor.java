@@ -50,7 +50,8 @@ public class NotificationsMonitor {
 //        ActorRef pullPullMatcher = sys.actorOf(PairMatcher.props("pull", "longPull"), "matcherPullPull");
         HttpConfig pushHttpConfig = new HttpConfig(config.getString("push-host"), config.getInt("push-port"),
                 config.getString("push-uri"), username, password);
-        pushConnector = sys.actorOf(PushConnector.props(pushHttpConfig, pushPullMatcher), "pushConnector");
+        PushHttp pushHttp = new PushHttp(sys, pushHttpConfig);
+        pushConnector = sys.actorOf(PushConnector.props(pushHttp, pushPullMatcher), "pushConnector");
         HttpConfig pullHttpConfig = new HttpConfig(config.getString("pull-host"), config.getInt("pull-port"),
                 config.getString("pull-uri"), username, password);
         PullHttp pullHttp = new PullHttp(sys, pullHttpConfig);
