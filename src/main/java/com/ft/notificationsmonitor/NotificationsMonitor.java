@@ -4,6 +4,8 @@ import akka.actor.ActorRef;
 import akka.actor.ActorSystem;
 import akka.actor.Cancellable;
 import akka.http.javadsl.Http;
+import com.ft.notificationsmonitor.http.PullHttp;
+import com.ft.notificationsmonitor.http.PushHttp;
 import com.ft.notificationsmonitor.model.HttpConfig;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;

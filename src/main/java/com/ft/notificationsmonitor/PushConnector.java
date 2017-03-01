@@ -4,8 +4,6 @@ import akka.NotUsed;
 import akka.actor.*;
 import akka.event.Logging;
 import akka.event.LoggingAdapter;
-import akka.http.javadsl.model.HttpRequest;
-import akka.http.javadsl.model.headers.Authorization;
 import akka.japi.Creator;
 import akka.japi.Pair;
 import akka.stream.ActorMaterializer;
@@ -14,11 +12,11 @@ import akka.stream.Materializer;
 import akka.stream.UniqueKillSwitch;
 import akka.stream.javadsl.*;
 import akka.util.ByteString;
+import com.ft.notificationsmonitor.http.PushHttp;
 import scala.concurrent.duration.Duration;
 
 import java.util.concurrent.TimeUnit;
 
-import static akka.http.javadsl.model.StatusCodes.OK;
 import static com.ft.notificationsmonitor.PushReader.*;
 
 public class PushConnector extends UntypedActor {

@@ -1,4 +1,4 @@
-package com.ft.notificationsmonitor;
+package com.ft.notificationsmonitor.http;
 
 import akka.actor.ActorSystem;
 import akka.http.javadsl.ConnectHttp;

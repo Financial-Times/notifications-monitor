@@ -3,6 +3,7 @@ package com.ft.notificationsmonitor;
 import akka.actor.ActorSystem;
 import akka.testkit.JavaTestKit;
 import akka.testkit.TestActorRef;
+import com.ft.notificationsmonitor.http.PullHttp;
 import com.ft.notificationsmonitor.model.DatedEntry;
 import com.ft.notificationsmonitor.model.PullPage;
 import org.junit.AfterClass;
