@@ -8,11 +8,14 @@ case class PushEntry(id: String) extends NotificationEntry(id)
 
 case class PullEntry(id: String) extends NotificationEntry(id)
 
-case class PullPage(notifications: List[PullEntry])
+case class Link(href: String)
+
+case class PullPage(notifications: List[PullEntry], links: List[Link])
 
 object NotificationFormats {
 
   implicit val pushEntryFormat: RootJsonFormat[PushEntry] = DefaultJsonProtocol.jsonFormat(PushEntry.apply, "id")
   implicit val pullEntryFormat: RootJsonFormat[PullEntry] = DefaultJsonProtocol.jsonFormat(PullEntry.apply, "id")
-  implicit val pullPageFormat: RootJsonFormat[PullPage] = DefaultJsonProtocol.jsonFormat1(PullPage)
+  implicit val linkFormat: RootJsonFormat[Link] = DefaultJsonProtocol.jsonFormat1(Link)
+  implicit val pullPageFormat: RootJsonFormat[PullPage] = DefaultJsonProtocol.jsonFormat2(PullPage)
 }

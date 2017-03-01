@@ -6,6 +6,7 @@ import akka.http.javadsl.Http;
 import akka.http.javadsl.OutgoingConnection;
 import akka.http.javadsl.model.HttpRequest;
 import akka.http.javadsl.model.HttpResponse;
+import akka.http.javadsl.model.Query;
 import akka.http.javadsl.model.headers.Authorization;
 import akka.stream.ActorMaterializer;
 import akka.stream.Materializer;
@@ -19,11 +20,10 @@ import spray.json.JsValue;
 import spray.json.JsonParser;
 import spray.json.ParserInput;
 
-import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 
+import static akka.http.javadsl.model.HttpCharsets.UTF_8;
 import static akka.http.javadsl.model.StatusCodes.OK;
 
 public class PullHttp {
@@ -39,8 +39,8 @@ public class PullHttp {
         connectionFlow = Http.get(sys).outgoingConnection(ConnectHttp.toHostHttps(httpConfig.getHostname(), httpConfig.getPort()));
     }
 
-    public CompletionStage<PullPage> makeRequest(ZonedDateTime date) {
-        HttpRequest request = HttpRequest.create(httpConfig.getUri() + "?since=" + date.format(DateTimeFormatter.ISO_INSTANT))
+    public CompletionStage<PullPage> makeRequest(final Query query) {
+        HttpRequest request = HttpRequest.GET(httpConfig.getUri() + "?" + query.render(UTF_8))
                 .addHeader(Authorization.basic(httpConfig.getUsername(), httpConfig.getPassword()));
         return Source.single(request)
                 .via(connectionFlow)

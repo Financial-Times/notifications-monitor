@@ -1,7 +1,6 @@
 package com.ft.notificationsmonitor;
 
 import akka.actor.ActorRef;
-import akka.actor.ActorSelection;
 import akka.actor.ActorSystem;
 import akka.actor.Cancellable;
 import akka.http.javadsl.Http;
@@ -15,7 +14,6 @@ import scala.runtime.BoxedUnit;
 
 import java.io.File;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.concurrent.TimeUnit;
 
 import static com.ft.notificationsmonitor.PullConnector.REQUEST_SINCE_LAST;
@@ -27,9 +25,9 @@ public class NotificationsMonitor {
     private ActorSystem sys;
     private ActorRef pushConnector;
     private Cancellable pullSchedule;
-    private Cancellable longPullSchedule;
+//    private Cancellable longPullSchedule;
     private Cancellable pushPullMatcherReport;
-    private Cancellable pullPullMatcherReport;
+//    private Cancellable pullPullMatcherReport;
 
     public static void main(String[] args) throws Exception {
         NotificationsMonitor monitor = new NotificationsMonitor();
@@ -47,32 +45,32 @@ public class NotificationsMonitor {
         String username = sensitiveConfig.getString("basic-auth.username");
         String password = sensitiveConfig.getString("basic-auth.password");
         ActorRef pushPullMatcher = sys.actorOf(PairMatcher.props("push", "pull"), "matcherPushPull");
-        ActorRef pullPullMatcher = sys.actorOf(PairMatcher.props("pull", "longPull"), "matcherPullPull");
+//        ActorRef pullPullMatcher = sys.actorOf(PairMatcher.props("pull", "longPull"), "matcherPullPull");
         HttpConfig pushHttpConfig = new HttpConfig(config.getString("push-host"), config.getInt("push-port"),
                 config.getString("push-uri"), username, password);
         pushConnector = sys.actorOf(PushConnector.props(pushHttpConfig, pushPullMatcher), "pushConnector");
         HttpConfig pullHttpConfig = new HttpConfig(config.getString("pull-host"), config.getInt("pull-port"),
                 config.getString("pull-uri"), username, password);
         PullHttp pullHttp = new PullHttp(sys, pullHttpConfig);
-        ActorRef pullConnector = sys.actorOf(PullConnector.props(pullHttp, Arrays.asList(pushPullMatcher, pullPullMatcher)), "pullConnector");
-        ActorRef longPullConnector = sys.actorOf(PullConnector.props(pullHttp, Collections.singletonList(pullPullMatcher)), "longPullConnector");
+        ActorRef pullConnector = sys.actorOf(PullConnector.props(pullHttp, Arrays.asList(pushPullMatcher/*, pullPullMatcher*/)), "pullConnector");
+//        ActorRef longPullConnector = sys.actorOf(PullConnector.props(pullHttp, Collections.singletonList(pullPullMatcher)), "longPullConnector");
         pullSchedule = sys.scheduler().schedule(Duration.apply(0, TimeUnit.SECONDS) ,
                 Duration.apply(2, TimeUnit.MINUTES), pullConnector, REQUEST_SINCE_LAST, sys.dispatcher(), ActorRef.noSender());
-        longPullSchedule = sys.scheduler().schedule(Duration.apply(0, TimeUnit.SECONDS) ,
-                Duration.apply(10, TimeUnit.MINUTES), longPullConnector, REQUEST_SINCE_LAST, sys.dispatcher(), ActorRef.noSender());
+//        longPullSchedule = sys.scheduler().schedule(Duration.apply(0, TimeUnit.SECONDS) ,
+//                Duration.apply(10, TimeUnit.MINUTES), longPullConnector, REQUEST_SINCE_LAST, sys.dispatcher(), ActorRef.noSender());
         pushPullMatcherReport = sys.scheduler().schedule(Duration.apply(250, TimeUnit.SECONDS),
                 Duration.apply(4, TimeUnit.MINUTES), pushPullMatcher, "Report", sys.dispatcher(), ActorRef.noSender());
-        pullPullMatcherReport = sys.scheduler().schedule(Duration.apply(610, TimeUnit.SECONDS),
-                Duration.apply(10, TimeUnit.MINUTES), pullPullMatcher, "Report", sys.dispatcher(), ActorRef.noSender());
+//        pullPullMatcherReport = sys.scheduler().schedule(Duration.apply(610, TimeUnit.SECONDS),
+//                Duration.apply(10, TimeUnit.MINUTES), pullPullMatcher, "Report", sys.dispatcher(), ActorRef.noSender());
         pushConnector.tell("Connect", ActorRef.noSender());
     }
 
     private BoxedUnit shutdown() {
         logger.info("Exiting...");
         pullSchedule.cancel();
-        longPullSchedule.cancel();
+//        longPullSchedule.cancel();
         pushPullMatcherReport.cancel();
-        pullPullMatcherReport.cancel();
+//        pullPullMatcherReport.cancel();
         pushConnector.tell("CancelAllStreams", ActorRef.noSender());
         Http.get(sys).shutdownAllConnectionPools()
                 .whenComplete((s, f) -> sys.terminate());
