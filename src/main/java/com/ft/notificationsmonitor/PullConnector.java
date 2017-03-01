@@ -49,11 +49,6 @@ public class PullConnector extends UntypedActor {
     }
 
     private void makeRequestsUntilEmpty(final boolean firstInSeries) {
-        if (firstInSeries) {
-            log.debug("Making request query={}", lastQuery.render(HttpCharsets.UTF_8));
-        } else {
-            log.debug("Continuing making request in the same series. query={}", lastQuery.render(HttpCharsets.UTF_8));
-        }
         CompletionStage<PullPage> pageF = pullHttp.makeRequest(lastQuery);
         pageF.whenComplete((page, failure) -> {
             if (failure != null) {
@@ -89,11 +84,8 @@ public class PullConnector extends UntypedActor {
         });
         currentQuery.ifPresent(query -> {
             if (!query.equals(lastQuery)) {
-                log.debug("Received link doesn't equal current one. Saving query={}", query.render(HttpCharsets.UTF_8));
                 this.lastQuery = query;
                 getSelf().tell(CONTINUE_REQUESTING_SINCE_LAST, getSelf());
-            } else {
-                log.debug("Link equal to current uri. Stopping series.");
             }
         });
     }
