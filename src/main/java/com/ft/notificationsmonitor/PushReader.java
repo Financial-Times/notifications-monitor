@@ -49,7 +49,6 @@ public class PushReader extends UntypedActor {
             }
 
         } else if (message.equals(INIT)) {
-            log.info("Initialized.");
             getSender().tell(ACK, self());
 
         } else if (message.equals(COMPLETE)) {

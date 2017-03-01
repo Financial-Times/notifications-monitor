@@ -69,7 +69,6 @@ public class PushConnector extends UntypedActor {
             getSelf().tell(CONNECT, getSelf());
 
         } else if (message.equals(SHUTDOWN)) {
-            log.info("Me shutting down...");
             isShuttingDown = true;
             killSwitch.shutdown();
             heartbeatMonitor.cancel();
