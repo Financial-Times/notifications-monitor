@@ -41,13 +41,7 @@ public class PullConnectorTest {
             PullHttp mockHttp = Mockito.mock(PullHttp.class);
             final JavaTestKit probe = new JavaTestKit(sys);
             final TestActorRef<PullConnector> pullConnectorRef = TestActorRef.create(sys, PullConnector.props(mockHttp, Collections.singletonList(probe.getRef())), "pullConnector");
-            when(mockHttp.makeRequest(any())).thenReturn(CompletableFuture.completedFuture(
-                    new PullPage(null, null)
-//                            JavaConverters.asScalaBuffer(Collections.singletonList(new PullEntry("a"))).toList(),
-//                            JavaConverters.asScalaBuffer(Collections.singletonList(new Link("alpha"))).toList()
-//                            )
-                    )
-            );
+            when(mockHttp.makeRequest(any())).thenReturn(CompletableFuture.completedFuture(new PullPage(null, null)));
 
             pullConnectorRef.tell(REQUEST_SINCE_LAST, getRef());
 

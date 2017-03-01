@@ -1,5 +1,6 @@
 package com.ft.notificationsmonitor;
 
+import akka.NotUsed;
 import akka.actor.*;
 import akka.event.Logging;
 import akka.event.LoggingAdapter;
@@ -10,30 +11,40 @@ import akka.http.javadsl.model.HttpRequest;
 import akka.http.javadsl.model.HttpResponse;
 import akka.http.javadsl.model.headers.Authorization;
 import akka.japi.Creator;
+import akka.japi.Pair;
 import akka.stream.ActorMaterializer;
+import akka.stream.KillSwitches;
 import akka.stream.Materializer;
-import akka.stream.javadsl.Flow;
-import akka.stream.javadsl.Sink;
-import akka.stream.javadsl.Source;
+import akka.stream.UniqueKillSwitch;
+import akka.stream.javadsl.*;
+import akka.util.ByteString;
 import com.ft.notificationsmonitor.model.HttpConfig;
-import com.ft.notificationsmonitor.model.Read;
 import scala.concurrent.duration.Duration;
 
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.TimeUnit;
 
 import static akka.http.javadsl.model.StatusCodes.OK;
+import static com.ft.notificationsmonitor.PushReader.*;
 
 public class PushConnector extends UntypedActor {
 
+    static final String CONNECT = "Connect";
+    static final String RECONNECT = "Reconnect";
+    static final String SHUTDOWN = "Shutdown";
+    static final String READER_FAILED = "ReaderFailed";
+    private static final ByteString DELIMITER = ByteString.fromString("\n\n");
+
     private LoggingAdapter log = Logging.getLogger(getContext().system(), this);
     private Materializer mat = ActorMaterializer.create(getContext());
+
     private HttpConfig httpConfig;
     private ActorRef pairMatcher;
     private ActorRef reader;
     private Flow<HttpRequest, HttpResponse, CompletionStage<OutgoingConnection>> connectionFlow;
     private Cancellable heartbeatMonitor;
-    private boolean cancelAllStreams = false;
+    private UniqueKillSwitch killSwitch;
+    private boolean isShuttingDown = false;
 
     public PushConnector(HttpConfig httpConfig, ActorRef pairMatcher) {
         this.httpConfig = httpConfig;
@@ -43,7 +54,7 @@ public class PushConnector extends UntypedActor {
 
     @Override
     public void onReceive(Object message) throws Throwable {
-        if (message.equals("Connect")) {
+        if (message.equals(CONNECT)) {
             HttpRequest request = HttpRequest.create(httpConfig.getUri())
                     .addHeader(Authorization.basic(httpConfig.getUsername(), httpConfig.getPassword()));
             Source.single(request)
@@ -61,24 +72,48 @@ public class PushConnector extends UntypedActor {
                                 log.info("Connected to push feed. host={} uri={} status={}", httpConfig.getHostname(), httpConfig.getUri(), response.status().intValue());
                                 reader = getContext().actorOf(PushReader.props(pairMatcher), "pushReader");
                                 getContext().watch(reader);
-                                reader.tell(new Read(response.entity().getDataBytes()), self());
-                                heartbeatMonitor = getContext().system().scheduler().schedule(Duration.apply(1, TimeUnit.MINUTES) ,
-                                        Duration.apply(1, TimeUnit.MINUTES), reader, "CheckHeartbeat", getContext().dispatcher(), getSelf());
+                                final Pair<UniqueKillSwitch, NotUsed> killSwitchAndDone = consumeBodyStreamInReader(response.entity().getDataBytes());
+                                killSwitch = killSwitchAndDone.first();
+                                heartbeatMonitor = getContext().system().scheduler().schedule(Duration.apply(1, TimeUnit.MINUTES),
+                                        Duration.apply(1, TimeUnit.MINUTES), reader, CHECK_HEATBEAT, getContext().dispatcher(), getSelf());
                             }
                         }
                     });
-        } else if (message.equals("CancelAllStreams")) {
-            cancelAllStreams = true;
-            reader.tell("CancelStream", self());
-        } else if (message.equals("StreamEnded")) {
+
+        } else if (message.equals(RECONNECT)) {
+            killSwitch.shutdown();
             heartbeatMonitor.cancel();
             reader.tell(PoisonPill$.MODULE$, self());
-            if (!cancelAllStreams) {
-                self().tell("Connect", self());
+            getSelf().tell(CONNECT, getSelf());
+
+        } else if (message.equals(SHUTDOWN)) {
+            log.info("Me shutting down...");
+            isShuttingDown = true;
+            killSwitch.shutdown();
+            heartbeatMonitor.cancel();
+            reader.tell(PoisonPill$.MODULE$, self());
+
+        } else if (message.equals(READER_FAILED)) {
+            if (!isShuttingDown) {
+                self().tell(RECONNECT, self());
             }
+
         } else if (message instanceof Terminated) {
             log.warning("{} dead.", ((Terminated) message).actor().path());
         }
+    }
+
+    private Pair<UniqueKillSwitch, NotUsed> consumeBodyStreamInReader(Source<ByteString, Object> body) {
+        return body.viaMat(KillSwitches.single(), Keep.right())
+                .via(Framing.delimiter(DELIMITER, 1024, FramingTruncation.ALLOW))
+                .toMat(
+                        Sink.actorRefWithAck(reader, INIT, ACK, COMPLETE, t -> {
+                            log.error(t, "Error following push stream.");
+                            return null;
+                        }),
+                        Keep.both()
+                )
+                .run(mat);
     }
 
     public static Props props(final HttpConfig httpConfig, final ActorRef pairMatcher) {

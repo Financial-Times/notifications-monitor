@@ -17,6 +17,8 @@ import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
 
 import static com.ft.notificationsmonitor.PullConnector.REQUEST_SINCE_LAST;
+import static com.ft.notificationsmonitor.PushConnector.SHUTDOWN;
+import static com.ft.notificationsmonitor.PushConnector.CONNECT;
 
 public class NotificationsMonitor {
 
@@ -62,7 +64,7 @@ public class NotificationsMonitor {
                 Duration.apply(4, TimeUnit.MINUTES), pushPullMatcher, "Report", sys.dispatcher(), ActorRef.noSender());
 //        pullPullMatcherReport = sys.scheduler().schedule(Duration.apply(610, TimeUnit.SECONDS),
 //                Duration.apply(10, TimeUnit.MINUTES), pullPullMatcher, "Report", sys.dispatcher(), ActorRef.noSender());
-        pushConnector.tell("Connect", ActorRef.noSender());
+        pushConnector.tell(CONNECT, ActorRef.noSender());
     }
 
     private BoxedUnit shutdown() {
@@ -71,7 +73,7 @@ public class NotificationsMonitor {
 //        longPullSchedule.cancel();
         pushPullMatcherReport.cancel();
 //        pullPullMatcherReport.cancel();
-        pushConnector.tell("CancelAllStreams", ActorRef.noSender());
+        pushConnector.tell(SHUTDOWN, ActorRef.noSender());
         Http.get(sys).shutdownAllConnectionPools()
                 .whenComplete((s, f) -> sys.terminate());
         return BoxedUnit.UNIT;
