@@ -25,8 +25,8 @@ import java.util.concurrent.CompletionStage;
 
 public class PullConnector extends UntypedActor {
 
+    private static final String CONTINUE_REQUESTING_SINCE_LAST = "ContinueRequestingSinceLast";
     static final String REQUEST_SINCE_LAST = "RequestSinceLast";
-    static final String CONTINUE_REQUESTING_SINCE_LAST = "ContinueRequestingSinceLast";
 
     private LoggingAdapter log = Logging.getLogger(getContext().system(), this);
 

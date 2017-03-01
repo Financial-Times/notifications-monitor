@@ -25,7 +25,7 @@ public class PushReader extends UntypedActor {
     static final String INIT = "Init";
     static final String ACK = "Ack";
     static final String COMPLETE = "Complete";
-    static final String CHECK_HEATBEAT = "CheckHeartbeat";
+    static final String CHECK_HEARTBEAT = "CheckHeartbeat";
 
     private LoggingAdapter log = Logging.getLogger(getContext().system(), this);
 
@@ -42,7 +42,7 @@ public class PushReader extends UntypedActor {
             parseBytes((ByteString) message);
             sender().tell(ACK, self());
 
-        } else if (message.equals(CHECK_HEATBEAT)) {
+        } else if (message.equals(CHECK_HEARTBEAT)) {
             if (heartbeat.isBefore(ZonedDateTime.now().minusMinutes(1))) {
                 log.warning("Missed out heartbeats for more than 1 minutes.");
                 context().parent().tell(RECONNECT, self());

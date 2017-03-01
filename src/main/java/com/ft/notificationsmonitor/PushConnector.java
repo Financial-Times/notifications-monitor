@@ -57,7 +57,7 @@ public class PushConnector extends UntypedActor {
                     final Pair<UniqueKillSwitch, NotUsed> killSwitchAndDone = consumeBodyStreamInReader(response);
                     killSwitch = killSwitchAndDone.first();
                     heartbeatMonitor = getContext().system().scheduler().schedule(Duration.apply(1, TimeUnit.MINUTES),
-                            Duration.apply(1, TimeUnit.MINUTES), reader, CHECK_HEATBEAT, getContext().dispatcher(), getSelf());
+                            Duration.apply(1, TimeUnit.MINUTES), reader, CHECK_HEARTBEAT, getContext().dispatcher(), getSelf());
                 }
             });
 
