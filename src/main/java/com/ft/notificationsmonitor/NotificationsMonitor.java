@@ -28,7 +28,6 @@ public class NotificationsMonitor {
 
     private ActorSystem sys;
     private ActorRef pushConnector;
-    private Cancellable pullSchedule;
 //    private Cancellable longPullSchedule;
     private Cancellable pushPullMatcherReport;
 //    private Cancellable pullPullMatcherReport;
@@ -59,8 +58,7 @@ public class NotificationsMonitor {
         PullHttp pullHttp = new PullHttp(sys, pullHttpConfig);
         ActorRef pullConnector = sys.actorOf(PullConnector.props(pullHttp, Arrays.asList(pushPullMatcher/*, pullPullMatcher*/)), "pullConnector");
 //        ActorRef longPullConnector = sys.actorOf(PullConnector.props(pullHttp, Collections.singletonList(pullPullMatcher)), "longPullConnector");
-        pullSchedule = sys.scheduler().schedule(Duration.apply(0, TimeUnit.SECONDS) ,
-                Duration.apply(2, TimeUnit.MINUTES), pullConnector, REQUEST_SINCE_LAST, sys.dispatcher(), ActorRef.noSender());
+        pullConnector.tell(REQUEST_SINCE_LAST, ActorRef.noSender());
 //        longPullSchedule = sys.scheduler().schedule(Duration.apply(0, TimeUnit.SECONDS) ,
 //                Duration.apply(10, TimeUnit.MINUTES), longPullConnector, REQUEST_SINCE_LAST, sys.dispatcher(), ActorRef.noSender());
         pushPullMatcherReport = sys.scheduler().schedule(Duration.apply(250, TimeUnit.SECONDS),
@@ -72,7 +70,6 @@ public class NotificationsMonitor {
 
     private BoxedUnit shutdown() {
         logger.info("Exiting...");
-        pullSchedule.cancel();
 //        longPullSchedule.cancel();
         pushPullMatcherReport.cancel();
 //        pullPullMatcherReport.cancel();

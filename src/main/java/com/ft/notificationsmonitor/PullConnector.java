@@ -14,12 +14,16 @@ import com.ft.notificationsmonitor.model.DatedEntry;
 import com.ft.notificationsmonitor.model.PullEntry;
 import com.ft.notificationsmonitor.model.PullPage;
 import scala.collection.JavaConverters;
+import scala.concurrent.duration.Duration;
 
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.CompletionStage;
+
+import static java.util.concurrent.TimeUnit.MINUTES;
+import static java.util.concurrent.TimeUnit.SECONDS;
 
 public class PullConnector extends UntypedActor {
 
@@ -51,11 +55,17 @@ public class PullConnector extends UntypedActor {
         pageF.whenComplete((page, failure) -> {
             if (failure != null) {
                 log.error(failure, "Failed notifications pull request.");
+                scheduleNextPull();
             } else {
                 parseNotificationEntries(page, firstInSeries);
                 parseLinkAndScheduleNextRequest(page);
             }
         });
+    }
+
+    private void scheduleNextPull() {
+        getContext().system().scheduler().scheduleOnce(Duration.apply(2, MINUTES),
+                self(), REQUEST_SINCE_LAST, getContext().dispatcher(), self());
     }
 
     private void parseNotificationEntries(final PullPage page, final boolean firstInSeries) {
@@ -82,6 +92,8 @@ public class PullConnector extends UntypedActor {
                     if (!query.equals(lastQuery)) {
                         this.lastQuery = query;
                         getSelf().tell(CONTINUE_REQUESTING_SINCE_LAST, getSelf());
+                    } else {
+                        scheduleNextPull();
                     }
                 });
     }
