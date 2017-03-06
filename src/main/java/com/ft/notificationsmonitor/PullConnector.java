@@ -23,7 +23,6 @@ import java.util.List;
 import java.util.concurrent.CompletionStage;
 
 import static java.util.concurrent.TimeUnit.MINUTES;
-import static java.util.concurrent.TimeUnit.SECONDS;
 
 public class PullConnector extends UntypedActor {
 
@@ -55,17 +54,12 @@ public class PullConnector extends UntypedActor {
         pageF.whenComplete((page, failure) -> {
             if (failure != null) {
                 log.error(failure, "Failed notifications pull request.");
-                scheduleNextPull();
+                scheduleNextRequest();
             } else {
                 parseNotificationEntries(page, firstInSeries);
                 parseLinkAndScheduleNextRequest(page);
             }
         });
-    }
-
-    private void scheduleNextPull() {
-        getContext().system().scheduler().scheduleOnce(Duration.apply(2, MINUTES),
-                self(), REQUEST_SINCE_LAST, getContext().dispatcher(), self());
     }
 
     private void parseNotificationEntries(final PullPage page, final boolean firstInSeries) {
@@ -93,9 +87,14 @@ public class PullConnector extends UntypedActor {
                         this.lastQuery = query;
                         getSelf().tell(CONTINUE_REQUESTING_SINCE_LAST, getSelf());
                     } else {
-                        scheduleNextPull();
+                        scheduleNextRequest();
                     }
                 });
+    }
+
+    private void scheduleNextRequest() {
+        getContext().system().scheduler().scheduleOnce(Duration.apply(2, MINUTES),
+                self(), REQUEST_SINCE_LAST, getContext().dispatcher(), self());
     }
 
     public static Props props(final PullHttp pullHttp, final List<ActorRef> pairMatchers) {
