@@ -74,7 +74,9 @@ public class PullConnector extends UntypedActor {
         } else {
             notifications.forEach(entry -> {
                 final DatedEntry datedEntry = new DatedEntry(entry, ZonedDateTime.now());
-                placeholderSkipper.shouldSkip(entry.id()).thenAccept(shouldSkip -> {
+                placeholderSkipper.shouldSkip(entry.id())
+                        .exceptionally(ex -> Boolean.FALSE)
+                        .thenAccept(shouldSkip -> {
                     if (shouldSkip) {
                         log.info("ContentPlaceholder id={} tid={} lastModified=\"{}\"", entry.id(), entry.publishReference(), entry.lastModified().format(DateTimeFormatter.ISO_INSTANT));
                     } else {
