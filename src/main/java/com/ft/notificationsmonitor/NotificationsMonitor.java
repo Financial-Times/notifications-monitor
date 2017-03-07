@@ -4,6 +4,7 @@ import akka.actor.ActorRef;
 import akka.actor.ActorSystem;
 import akka.actor.Cancellable;
 import akka.http.javadsl.Http;
+import com.ft.notificationsmonitor.http.PlaceholderSkipper;
 import com.ft.notificationsmonitor.http.PullHttp;
 import com.ft.notificationsmonitor.http.PushHttp;
 import com.ft.notificationsmonitor.model.HttpConfig;
@@ -50,10 +51,13 @@ public class NotificationsMonitor {
                 config.getString("push-uri"), username, password);
         PushHttp pushHttp = new PushHttp(sys, pushHttpConfig);
         pushConnector = sys.actorOf(PushConnector.props(pushHttp, pushPullMatcher), "pushConnector");
+        final HttpConfig placeholderHttpConfig = new HttpConfig(config.getString("placeholder-host"), config.getInt("placeholder-port"),
+                config.getString("placeholder-uri"), username, password);
+        final PlaceholderSkipper placeholderSkipper = new PlaceholderSkipper(sys, placeholderHttpConfig);
         HttpConfig pullHttpConfig = new HttpConfig(config.getString("pull-host"), config.getInt("pull-port"),
                 config.getString("pull-uri"), username, password);
         PullHttp pullHttp = new PullHttp(sys, pullHttpConfig);
-        ActorRef pullConnector = sys.actorOf(PullConnector.props(pullHttp, Collections.singletonList(pushPullMatcher)), "pullConnector");
+        ActorRef pullConnector = sys.actorOf(PullConnector.props(pullHttp, placeholderSkipper, Collections.singletonList(pushPullMatcher)), "pullConnector");
         pullConnector.tell(REQUEST_SINCE_LAST, ActorRef.noSender());
         pushPullMatcherReport = sys.scheduler().schedule(Duration.apply(250, TimeUnit.SECONDS),
                 Duration.apply(4, TimeUnit.MINUTES), pushPullMatcher, "Report", sys.dispatcher(), ActorRef.noSender());

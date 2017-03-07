@@ -9,6 +9,7 @@ import akka.http.javadsl.model.Query;
 import akka.http.javadsl.model.Uri;
 import akka.japi.Creator;
 import akka.japi.Pair;
+import com.ft.notificationsmonitor.http.PlaceholderSkipper;
 import com.ft.notificationsmonitor.http.PullHttp;
 import com.ft.notificationsmonitor.model.DatedEntry;
 import com.ft.notificationsmonitor.model.PullEntry;
@@ -32,11 +33,13 @@ public class PullConnector extends UntypedActor {
     private LoggingAdapter log = Logging.getLogger(getContext().system(), this);
 
     private PullHttp pullHttp;
+    private PlaceholderSkipper placeholderSkipper;
     private List<ActorRef> pairMatchers;
     private Query lastQuery = Query.create(new Pair<>("since", ZonedDateTime.now().format(DateTimeFormatter.ISO_INSTANT)));
 
-    public PullConnector(PullHttp pullHttp, List<ActorRef> pairMatchers) {
+    public PullConnector(final PullHttp pullHttp, final PlaceholderSkipper placeholderSkipper, final List<ActorRef> pairMatchers) {
         this.pullHttp = pullHttp;
+        this.placeholderSkipper = placeholderSkipper;
         this.pairMatchers = pairMatchers;
     }
 
@@ -70,9 +73,15 @@ public class PullConnector extends UntypedActor {
             }
         } else {
             notifications.forEach(entry -> {
-                log.info("id={} tid={} lastModified=\"{}\"", entry.id(), entry.publishReference(), entry.lastModified().format(DateTimeFormatter.ISO_INSTANT));
                 final DatedEntry datedEntry = new DatedEntry(entry, ZonedDateTime.now());
-                pairMatchers.forEach(pairMatcher -> pairMatcher.tell(datedEntry, self()));
+                placeholderSkipper.shouldSkip(entry.id()).thenAccept(shouldSkip -> {
+                    if (shouldSkip) {
+                        log.info("ContentPlaceholder id={} tid={} lastModified=\"{}\"", entry.id(), entry.publishReference(), entry.lastModified().format(DateTimeFormatter.ISO_INSTANT));
+                    } else {
+                        log.info("id={} tid={} lastModified=\"{}\"", entry.id(), entry.publishReference(), entry.lastModified().format(DateTimeFormatter.ISO_INSTANT));
+                        pairMatchers.forEach(pairMatcher -> pairMatcher.tell(datedEntry, self()));
+                    }
+                });
             });
         }
     }
@@ -97,13 +106,13 @@ public class PullConnector extends UntypedActor {
                 self(), REQUEST_SINCE_LAST, getContext().dispatcher(), self());
     }
 
-    public static Props props(final PullHttp pullHttp, final List<ActorRef> pairMatchers) {
+    public static Props props(final PullHttp pullHttp, final PlaceholderSkipper placeholderSkipper, final List<ActorRef> pairMatchers) {
         return Props.create(new Creator<PullConnector>() {
             private static final long serialVersionUID = 1L;
 
             @Override
             public PullConnector create() throws Exception {
-                return new PullConnector(pullHttp, pairMatchers);
+                return new PullConnector(pullHttp, placeholderSkipper, pairMatchers);
             }
         });
     }
