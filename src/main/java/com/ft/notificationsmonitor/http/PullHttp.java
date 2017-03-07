@@ -8,6 +8,7 @@ import akka.http.javadsl.model.HttpRequest;
 import akka.http.javadsl.model.HttpResponse;
 import akka.http.javadsl.model.Query;
 import akka.http.javadsl.model.headers.Authorization;
+import akka.http.javadsl.model.headers.RawHeader;
 import akka.stream.ActorMaterializer;
 import akka.stream.Materializer;
 import akka.stream.javadsl.Flow;
@@ -39,9 +40,10 @@ public class PullHttp {
         connectionFlow = Http.get(sys).outgoingConnection(ConnectHttp.toHostHttps(httpConfig.getHostname(), httpConfig.getPort()));
     }
 
-    public CompletionStage<PullPage> makeRequest(final Query query) {
+    public CompletionStage<PullPage> makeRequest(final Query query, final String tid) {
         HttpRequest request = HttpRequest.GET(httpConfig.getUri() + "?" + query.render(UTF_8))
-                .addHeader(Authorization.basic(httpConfig.getUsername(), httpConfig.getPassword()));
+                .addHeader(Authorization.basic(httpConfig.getUsername(), httpConfig.getPassword()))
+                .addHeader(RawHeader.create("X-Request-Id", tid));
         return Source.single(request)
                 .via(connectionFlow)
                 .runWith(Sink.head(), mat)

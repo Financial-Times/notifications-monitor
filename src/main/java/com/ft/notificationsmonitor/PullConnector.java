@@ -21,8 +21,10 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Collection;
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.CompletionStage;
 
+import static akka.http.javadsl.model.HttpCharsets.UTF_8;
 import static java.util.concurrent.TimeUnit.MINUTES;
 
 public class PullConnector extends UntypedActor {
@@ -53,7 +55,9 @@ public class PullConnector extends UntypedActor {
     }
 
     private void makeRequestsUntilEmpty(final boolean firstInSeries) {
-        CompletionStage<PullPage> pageF = pullHttp.makeRequest(lastQuery);
+        final String tid = UUID.randomUUID().toString();
+        log.debug("Making pull request. query=\"{}\" tid={}", lastQuery.render(UTF_8), tid);
+        CompletionStage<PullPage> pageF = pullHttp.makeRequest(lastQuery, tid);
         pageF.whenComplete((page, failure) -> {
             if (failure != null) {
                 log.error(failure, "Failed notifications pull request.");
