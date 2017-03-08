@@ -3,7 +3,7 @@ package com.ft.notificationsmonitor;
 import akka.actor.ActorSystem;
 import akka.testkit.JavaTestKit;
 import akka.testkit.TestActorRef;
-import com.ft.notificationsmonitor.http.PlaceholderSkipper;
+import com.ft.notificationsmonitor.http.NativeHttp;
 import com.ft.notificationsmonitor.http.PullHttp;
 import com.ft.notificationsmonitor.model.DatedEntry;
 import com.ft.notificationsmonitor.model.Link;
@@ -20,6 +20,7 @@ import scala.collection.JavaConverters;
 import java.time.ZonedDateTime;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
 import static com.ft.notificationsmonitor.PullConnector.REQUEST_SINCE_LAST;
@@ -46,16 +47,16 @@ public class PullConnectorTest {
     public void testSuccessfulRequestIsSentToMatcher() {
         new JavaTestKit(sys) {{
             PullHttp mockHttp = Mockito.mock(PullHttp.class);
-            PlaceholderSkipper mockPlaceholderSkipper = Mockito.mock(PlaceholderSkipper.class);
+            NativeHttp mockNativeHttp = Mockito.mock(NativeHttp.class);
             final JavaTestKit probe = new JavaTestKit(sys);
-            final TestActorRef<PullConnector> pullConnectorRef = TestActorRef.create(sys, PullConnector.props(mockHttp, mockPlaceholderSkipper, Collections.singletonList(probe.getRef())), "pullConnector1");
+            final TestActorRef<PullConnector> pullConnectorRef = TestActorRef.create(sys, PullConnector.props(mockHttp, mockNativeHttp, Collections.singletonList(probe.getRef())), "pullConnector1");
             when(mockHttp.makeRequest(any(), anyString())).thenReturn(CompletableFuture.completedFuture(setupTestPage()));
-            when(mockPlaceholderSkipper.shouldSkip(any())).thenReturn(CompletableFuture.completedFuture(Boolean.FALSE));
+            when(mockNativeHttp.getNativeContent(any())).thenReturn(CompletableFuture.completedFuture(Optional.of("native")));
 
             pullConnectorRef.tell(REQUEST_SINCE_LAST, getRef());
 
             verify(mockHttp, times(2)).makeRequest(any(), anyString());
-            verify(mockPlaceholderSkipper, times(2)).shouldSkip(anyString());
+            verify(mockNativeHttp, times(2)).getNativeContent(anyString());
             probe.expectMsgClass(DatedEntry.class);
         }};
     }
@@ -72,15 +73,15 @@ public class PullConnectorTest {
     public void testUnsuccessfulRequestIsHandled() {
         new JavaTestKit(sys) {{
             PullHttp mockHttp = Mockito.mock(PullHttp.class);
-            PlaceholderSkipper mockPlaceholderSkipper = Mockito.mock(PlaceholderSkipper.class);
+            NativeHttp mockNativeHttp = Mockito.mock(NativeHttp.class);
             final JavaTestKit probe = new JavaTestKit(sys);
-            final TestActorRef<PullConnector> pullConnectorRef = TestActorRef.create(sys, PullConnector.props(mockHttp, mockPlaceholderSkipper, Collections.singletonList(probe.getRef())), "pullConnector2");
+            final TestActorRef<PullConnector> pullConnectorRef = TestActorRef.create(sys, PullConnector.props(mockHttp, mockNativeHttp, Collections.singletonList(probe.getRef())), "pullConnector2");
             doThrow(new RuntimeException("Problem in request")).when(mockHttp).makeRequest(any(), anyString());
 
             pullConnectorRef.tell(REQUEST_SINCE_LAST, getRef());
 
             verify(mockHttp).makeRequest(any(), anyString());
-            verifyNoMoreInteractions(mockPlaceholderSkipper);
+            verifyNoMoreInteractions(mockNativeHttp);
             probe.expectNoMsg();
         }};
     }
@@ -89,16 +90,16 @@ public class PullConnectorTest {
     public void testSuccessfulRequestButVerifiedPlaceholderIsNotSentToMatcher() {
         new JavaTestKit(sys) {{
             PullHttp mockHttp = Mockito.mock(PullHttp.class);
-            PlaceholderSkipper mockPlaceholderSkipper = Mockito.mock(PlaceholderSkipper.class);
+            NativeHttp mockNativeHttp = Mockito.mock(NativeHttp.class);
             final JavaTestKit probe = new JavaTestKit(sys);
-            final TestActorRef<PullConnector> pullConnectorRef = TestActorRef.create(sys, PullConnector.props(mockHttp, mockPlaceholderSkipper, Collections.singletonList(probe.getRef())), "pullConnector3");
+            final TestActorRef<PullConnector> pullConnectorRef = TestActorRef.create(sys, PullConnector.props(mockHttp, mockNativeHttp, Collections.singletonList(probe.getRef())), "pullConnector3");
             when(mockHttp.makeRequest(any(), anyString())).thenReturn(CompletableFuture.completedFuture(setupTestPage()));
-            when(mockPlaceholderSkipper.shouldSkip(any())).thenReturn(CompletableFuture.completedFuture(Boolean.TRUE));
+            when(mockNativeHttp.getNativeContent(any())).thenReturn(CompletableFuture.completedFuture(Optional.of("ContentPlaceholder")));
 
             pullConnectorRef.tell(REQUEST_SINCE_LAST, getRef());
 
             verify(mockHttp, times(2)).makeRequest(any(), anyString());
-            verify(mockPlaceholderSkipper, times(2)).shouldSkip(anyString());
+            verify(mockNativeHttp, times(2)).getNativeContent(anyString());
             probe.expectNoMsg();
         }};
     }
@@ -107,11 +108,11 @@ public class PullConnectorTest {
     public void testSuccessfulRequestAndPlaceholderVerificationUnsuccessfulThenSentToMatcher() {
         new JavaTestKit(sys) {{
             PullHttp mockHttp = Mockito.mock(PullHttp.class);
-            PlaceholderSkipper mockPlaceholderSkipper = Mockito.mock(PlaceholderSkipper.class);
+            NativeHttp mockNativeHttp = Mockito.mock(NativeHttp.class);
             final JavaTestKit probe = new JavaTestKit(sys);
-            final TestActorRef<PullConnector> pullConnectorRef = TestActorRef.create(sys, PullConnector.props(mockHttp, mockPlaceholderSkipper, Collections.singletonList(probe.getRef())), "pullConnector4");
+            final TestActorRef<PullConnector> pullConnectorRef = TestActorRef.create(sys, PullConnector.props(mockHttp, mockNativeHttp, Collections.singletonList(probe.getRef())), "pullConnector4");
             when(mockHttp.makeRequest(any(), anyString())).thenReturn(CompletableFuture.completedFuture(setupTestPage()));
-            when(mockPlaceholderSkipper.shouldSkip(any())).thenReturn(
+            when(mockNativeHttp.getNativeContent(any())).thenReturn(
                     CompletableFuture.supplyAsync(() -> {
                         throw new RuntimeException("Placeholder verification failed.");
                     })
@@ -120,7 +121,7 @@ public class PullConnectorTest {
             pullConnectorRef.tell(REQUEST_SINCE_LAST, getRef());
 
             verify(mockHttp, times(2)).makeRequest(any(), anyString());
-            verify(mockPlaceholderSkipper, times(2)).shouldSkip(anyString());
+            verify(mockNativeHttp, times(2)).getNativeContent(anyString());
             probe.expectMsgClass(DatedEntry.class);
         }};
     }

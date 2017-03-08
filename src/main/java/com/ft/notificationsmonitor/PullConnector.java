@@ -9,7 +9,7 @@ import akka.http.javadsl.model.Query;
 import akka.http.javadsl.model.Uri;
 import akka.japi.Creator;
 import akka.japi.Pair;
-import com.ft.notificationsmonitor.http.PlaceholderSkipper;
+import com.ft.notificationsmonitor.http.NativeHttp;
 import com.ft.notificationsmonitor.http.PullHttp;
 import com.ft.notificationsmonitor.model.DatedEntry;
 import com.ft.notificationsmonitor.model.PullEntry;
@@ -21,6 +21,7 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletionStage;
 
@@ -35,13 +36,13 @@ public class PullConnector extends UntypedActor {
     private LoggingAdapter log = Logging.getLogger(getContext().system(), this);
 
     private PullHttp pullHttp;
-    private PlaceholderSkipper placeholderSkipper;
+    private NativeHttp nativeHttp;
     private List<ActorRef> pairMatchers;
     private Query lastQuery = Query.create(new Pair<>("since", ZonedDateTime.now().format(DateTimeFormatter.ISO_INSTANT)));
 
-    public PullConnector(final PullHttp pullHttp, final PlaceholderSkipper placeholderSkipper, final List<ActorRef> pairMatchers) {
+    public PullConnector(final PullHttp pullHttp, final NativeHttp nativeHttp, final List<ActorRef> pairMatchers) {
         this.pullHttp = pullHttp;
-        this.placeholderSkipper = placeholderSkipper;
+        this.nativeHttp = nativeHttp;
         this.pairMatchers = pairMatchers;
     }
 
@@ -78,9 +79,7 @@ public class PullConnector extends UntypedActor {
         } else {
             notifications.forEach(entry -> {
                 final DatedEntry datedEntry = new DatedEntry(entry, ZonedDateTime.now());
-                placeholderSkipper.shouldSkip(entry.id())
-                        .exceptionally(ex -> Boolean.FALSE)
-                        .thenAccept(shouldSkip -> {
+                shouldSkipBecauseItsPlaceholder(entry).thenAccept(shouldSkip -> {
                     if (shouldSkip) {
                         log.info("ContentPlaceholder id={} tid={} lastModified=\"{}\"", entry.id(), entry.publishReference(), entry.lastModified().format(DateTimeFormatter.ISO_INSTANT));
                     } else {
@@ -90,6 +89,15 @@ public class PullConnector extends UntypedActor {
                 });
             });
         }
+    }
+
+    private CompletionStage<Boolean> shouldSkipBecauseItsPlaceholder(final PullEntry entry) {
+        return nativeHttp.getNativeContent(entry.id())
+                .exceptionally(ex -> {
+                    log.error(ex, "Failed getting native content to verify if it's placeholder for id={}", entry.id());
+                    return Optional.empty();
+                })
+                .thenApply(nativeContentO -> nativeContentO.isPresent() && nativeContentO.get().contains("ContentPlaceholder"));
     }
 
     private void parseLinkAndScheduleNextRequest(final PullPage page) {
@@ -112,13 +120,13 @@ public class PullConnector extends UntypedActor {
                 self(), REQUEST_SINCE_LAST, getContext().dispatcher(), self());
     }
 
-    public static Props props(final PullHttp pullHttp, final PlaceholderSkipper placeholderSkipper, final List<ActorRef> pairMatchers) {
+    public static Props props(final PullHttp pullHttp, final NativeHttp nativeHttp, final List<ActorRef> pairMatchers) {
         return Props.create(new Creator<PullConnector>() {
             private static final long serialVersionUID = 1L;
 
             @Override
             public PullConnector create() throws Exception {
-                return new PullConnector(pullHttp, placeholderSkipper, pairMatchers);
+                return new PullConnector(pullHttp, nativeHttp, pairMatchers);
             }
         });
     }

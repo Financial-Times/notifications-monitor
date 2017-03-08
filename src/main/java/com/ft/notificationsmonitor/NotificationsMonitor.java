@@ -4,7 +4,7 @@ import akka.actor.ActorRef;
 import akka.actor.ActorSystem;
 import akka.actor.Cancellable;
 import akka.http.javadsl.Http;
-import com.ft.notificationsmonitor.http.PlaceholderSkipper;
+import com.ft.notificationsmonitor.http.NativeHttp;
 import com.ft.notificationsmonitor.http.PullHttp;
 import com.ft.notificationsmonitor.http.PushHttp;
 import com.ft.notificationsmonitor.model.HttpConfig;
@@ -44,20 +44,18 @@ public class NotificationsMonitor {
 
         Config sensitiveConfig = ConfigFactory.parseFile(new File("src/main/resources/.sensitive.conf"));
         Config config = ConfigFactory.load().withFallback(sensitiveConfig);
-        String username = sensitiveConfig.getString("basic-auth.username");
-        String password = sensitiveConfig.getString("basic-auth.password");
         ActorRef pushPullMatcher = sys.actorOf(PairMatcher.props("push", "pull"), "matcherPushPull");
         HttpConfig pushHttpConfig = new HttpConfig(config.getString("push-host"), config.getInt("push-port"),
-                config.getString("push-uri"), username, password);
+                config.getString("push-uri"), sensitiveConfig.getString("delivery-basic-auth.username"), sensitiveConfig.getString("delivery-basic-auth.password"));
         PushHttp pushHttp = new PushHttp(sys, pushHttpConfig);
         pushConnector = sys.actorOf(PushConnector.props(pushHttp, pushPullMatcher), "pushConnector");
         final HttpConfig placeholderHttpConfig = new HttpConfig(config.getString("placeholder-host"), config.getInt("placeholder-port"),
-                config.getString("placeholder-uri"), username, password);
-        final PlaceholderSkipper placeholderSkipper = new PlaceholderSkipper(sys, placeholderHttpConfig);
+                config.getString("placeholder-uri"), sensitiveConfig.getString("publishing-basic-auth.username"), sensitiveConfig.getString("publishing-basic-auth.password"));
+        final NativeHttp nativeHttp = new NativeHttp(sys, placeholderHttpConfig);
         HttpConfig pullHttpConfig = new HttpConfig(config.getString("pull-host"), config.getInt("pull-port"),
-                config.getString("pull-uri"), username, password);
+                config.getString("pull-uri"), sensitiveConfig.getString("delivery-basic-auth.username"), sensitiveConfig.getString("delivery-basic-auth.password"));
         PullHttp pullHttp = new PullHttp(sys, pullHttpConfig);
-        ActorRef pullConnector = sys.actorOf(PullConnector.props(pullHttp, placeholderSkipper, Collections.singletonList(pushPullMatcher)), "pullConnector");
+        ActorRef pullConnector = sys.actorOf(PullConnector.props(pullHttp, nativeHttp, Collections.singletonList(pushPullMatcher)), "pullConnector");
         pullConnector.tell(REQUEST_SINCE_LAST, ActorRef.noSender());
         pushPullMatcherReport = sys.scheduler().schedule(Duration.apply(250, TimeUnit.SECONDS),
                 Duration.apply(4, TimeUnit.MINUTES), pushPullMatcher, "Report", sys.dispatcher(), ActorRef.noSender());

@@ -14,25 +14,27 @@ import akka.stream.javadsl.Sink;
 import akka.stream.javadsl.Source;
 import com.ft.notificationsmonitor.model.HttpConfig;
 
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 
+import static akka.http.javadsl.model.StatusCodes.NOT_FOUND;
 import static akka.http.javadsl.model.StatusCodes.OK;
 
-public class PlaceholderSkipper {
+public class NativeHttp {
 
     private Materializer mat;
 
     private Flow<HttpRequest, HttpResponse, CompletionStage<OutgoingConnection>> connectionFlow;
     private HttpConfig httpConfig;
 
-    public PlaceholderSkipper(ActorSystem sys, HttpConfig httpConfig) {
+    public NativeHttp(ActorSystem sys, HttpConfig httpConfig) {
         this.httpConfig = httpConfig;
         mat = ActorMaterializer.create(sys);
         connectionFlow = Http.get(sys).outgoingConnection(ConnectHttp.toHostHttps(httpConfig.getHostname(), httpConfig.getPort()));
     }
 
-    public CompletionStage<Boolean> shouldSkip(final String id) {
+    public CompletionStage<Optional<String>> getNativeContent(final String id) {
         final String uuid = id.substring(id.lastIndexOf("/") + 1, id.length());
         final HttpRequest request = HttpRequest.GET(httpConfig.getUri() + uuid)
                 .addHeader(Authorization.basic(httpConfig.getUsername(), httpConfig.getPassword()));
@@ -42,9 +44,11 @@ public class PlaceholderSkipper {
                 .thenCompose(response -> {
                     if (response.status().equals(OK)) {
                         return response.entity().toStrict(5000, mat)
-                                .thenApply(entity -> entity.getData().utf8String().contains("ContentPlaceholder"));
+                                .thenApply(entity -> Optional.of(entity.getData().utf8String()));
+                    } else if (response.status().equals(NOT_FOUND)){
+                        return CompletableFuture.completedFuture(Optional.empty());
                     } else {
-                        return CompletableFuture.completedFuture(Boolean.FALSE);
+                        throw new RuntimeException(String.format("Getting native content resulted with unexpected status=%d", response.status().intValue()));
                     }
                 });
     }
