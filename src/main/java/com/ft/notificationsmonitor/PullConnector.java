@@ -18,10 +18,7 @@ import scala.collection.JavaConverters;
 import scala.concurrent.duration.Duration;
 
 import java.time.ZonedDateTime;
-import java.util.Collection;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.CompletionStage;
 
 import static akka.http.javadsl.model.HttpCharsets.UTF_8;
@@ -39,6 +36,7 @@ public class PullConnector extends UntypedActor {
     private NativeHttp nativeHttp;
     private List<ActorRef> pairMatchers;
     private Query lastQuery = Query.create(new Pair<>("since", ZonedDateTime.now().format(ISO_INSTANT)));
+    private History history = new History();
 
     public PullConnector(final PullHttp pullHttp, final NativeHttp nativeHttp, final List<ActorRef> pairMatchers) {
         this.pullHttp = pullHttp;
@@ -84,11 +82,16 @@ public class PullConnector extends UntypedActor {
                         log.info("ContentPlaceholder id={} tid={} lastModified=\"{}\"", entry.id(), entry.publishReference(), entry.lastModified().format(ISO_INSTANT));
                     } else {
                         log.info("id={} tid={} lastModified=\"{}\" notificationDate=\"{}\"", entry.id(), entry.publishReference(), entry.lastModified().format(ISO_INSTANT), entry.notificationDate().format(ISO_INSTANT));
-                        pairMatchers.forEach(pairMatcher -> pairMatcher.tell(datedEntry, self()));
+                        if (history.verifyAndAddToHistory(datedEntry)) {
+                            pairMatchers.forEach(pairMatcher -> pairMatcher.tell(datedEntry, self()));
+                        } else {
+                            log.warning("Duplicate entry. Same id and publishReference was seen in the last x minutes. id={} publishReference={} lastModifiedDate={} notificationDate={}", entry.getId(), entry.getPublishReference(), entry.getLastModified().format(ISO_INSTANT), entry.notificationDate().format(ISO_INSTANT));
+                        }
                     }
                 });
             });
         }
+        history.clearSomeHistory();
     }
 
     private CompletionStage<Boolean> shouldSkipBecauseItsPlaceholder(final PullEntry entry) {
