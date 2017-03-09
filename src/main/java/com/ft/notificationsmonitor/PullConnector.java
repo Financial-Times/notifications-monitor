@@ -18,7 +18,6 @@ import scala.collection.JavaConverters;
 import scala.concurrent.duration.Duration;
 
 import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -26,6 +25,7 @@ import java.util.UUID;
 import java.util.concurrent.CompletionStage;
 
 import static akka.http.javadsl.model.HttpCharsets.UTF_8;
+import static java.time.format.DateTimeFormatter.ISO_INSTANT;
 import static java.util.concurrent.TimeUnit.MINUTES;
 
 public class PullConnector extends UntypedActor {
@@ -38,7 +38,7 @@ public class PullConnector extends UntypedActor {
     private PullHttp pullHttp;
     private NativeHttp nativeHttp;
     private List<ActorRef> pairMatchers;
-    private Query lastQuery = Query.create(new Pair<>("since", ZonedDateTime.now().format(DateTimeFormatter.ISO_INSTANT)));
+    private Query lastQuery = Query.create(new Pair<>("since", ZonedDateTime.now().format(ISO_INSTANT)));
 
     public PullConnector(final PullHttp pullHttp, final NativeHttp nativeHttp, final List<ActorRef> pairMatchers) {
         this.pullHttp = pullHttp;
@@ -81,9 +81,9 @@ public class PullConnector extends UntypedActor {
                 final DatedEntry datedEntry = new DatedEntry(entry, ZonedDateTime.now());
                 shouldSkipBecauseItsPlaceholder(entry).thenAccept(shouldSkip -> {
                     if (shouldSkip) {
-                        log.info("ContentPlaceholder id={} tid={} lastModified=\"{}\"", entry.id(), entry.publishReference(), entry.lastModified().format(DateTimeFormatter.ISO_INSTANT));
+                        log.info("ContentPlaceholder id={} tid={} lastModified=\"{}\"", entry.id(), entry.publishReference(), entry.lastModified().format(ISO_INSTANT));
                     } else {
-                        log.info("id={} tid={} lastModified=\"{}\"", entry.id(), entry.publishReference(), entry.lastModified().format(DateTimeFormatter.ISO_INSTANT));
+                        log.info("id={} tid={} lastModified=\"{}\" notificationDate=\"{}\"", entry.id(), entry.publishReference(), entry.lastModified().format(ISO_INSTANT), entry.notificationDate().format(ISO_INSTANT));
                         pairMatchers.forEach(pairMatcher -> pairMatcher.tell(datedEntry, self()));
                     }
                 });
