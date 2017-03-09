@@ -62,7 +62,7 @@ public class PullConnectorTest {
     }
 
     private PullPage setupTestPage() {
-        List<PullEntry> entries = Collections.singletonList(new PullEntry("a", "p", ZonedDateTime.now()));
+        List<PullEntry> entries = Collections.singletonList(new PullEntry("a", "p", ZonedDateTime.now(), ZonedDateTime.now()));
         List<Link> links = Collections.singletonList(new Link("https://prod-uk.ft.com/content/notifications?since=123"));
         scala.collection.immutable.List<PullEntry> entriesS = JavaConverters.asScalaBuffer(entries).toList();
         scala.collection.immutable.List<Link> linksS = JavaConverters.asScalaBuffer(links).toList();

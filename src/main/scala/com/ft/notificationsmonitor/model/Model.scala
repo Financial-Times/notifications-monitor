@@ -10,7 +10,7 @@ import NotificationFormats._
 case class PushEntry(id: String, publishReference: String, lastModified: ZonedDateTime)
   extends NotificationEntry(id, publishReference, lastModified)
 
-case class PullEntry(id: String, publishReference: String, lastModified: ZonedDateTime)
+case class PullEntry(id: String, publishReference: String, lastModified: ZonedDateTime, notificationDate: ZonedDateTime)
   extends NotificationEntry(id, publishReference, lastModified)
 
 case class Link(href: String)
@@ -21,7 +21,7 @@ object NotificationFormats {
 
   implicit val zonedDateTimeFormat = ZonedDateTimeFormat
   implicit val pushEntryFormat: RootJsonFormat[PushEntry] = DefaultJsonProtocol.jsonFormat3(PushEntry)
-  implicit val pullEntryFormat: RootJsonFormat[PullEntry] = DefaultJsonProtocol.jsonFormat3(PullEntry)
+  implicit val pullEntryFormat: RootJsonFormat[PullEntry] = DefaultJsonProtocol.jsonFormat4(PullEntry)
   implicit val linkFormat: RootJsonFormat[Link] = DefaultJsonProtocol.jsonFormat1(Link)
   implicit val pullPageFormat: RootJsonFormat[PullPage] = DefaultJsonProtocol.jsonFormat2(PullPage)
 }

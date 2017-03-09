@@ -49,23 +49,23 @@ public class PullConnector extends UntypedActor {
     @Override
     public void onReceive(Object message) {
         if (message.equals(REQUEST_SINCE_LAST)) {
-            makeRequestsUntilEmpty(true);
+            pullUntilEmpty(true);
         } else if (message.equals(CONTINUE_REQUESTING_SINCE_LAST)) {
-            makeRequestsUntilEmpty(false);
+            pullUntilEmpty(false);
         }
     }
 
-    private void makeRequestsUntilEmpty(final boolean firstInSeries) {
+    private void pullUntilEmpty(final boolean firstInSeries) {
         final String tid = UUID.randomUUID().toString();
         log.debug("Making pull request. query=\"{}\" tid={}", lastQuery.render(UTF_8), tid);
         CompletionStage<PullPage> pageF = pullHttp.makeRequest(lastQuery, tid);
         pageF.whenComplete((page, failure) -> {
             if (failure != null) {
                 log.error(failure, "Failed notifications pull request.");
-                scheduleNextRequest();
+                scheduleNextPull();
             } else {
                 parseNotificationEntries(page, firstInSeries);
-                parseLinkAndScheduleNextRequest(page);
+                parseLinkAndScheduleNextPull(page);
             }
         });
     }
@@ -100,7 +100,7 @@ public class PullConnector extends UntypedActor {
                 .thenApply(nativeContentO -> nativeContentO.isPresent() && nativeContentO.get().contains("ContentPlaceholder"));
     }
 
-    private void parseLinkAndScheduleNextRequest(final PullPage page) {
+    private void parseLinkAndScheduleNextPull(final PullPage page) {
         JavaConverters.asJavaCollection(page.links())
                 .stream()
                 .findFirst()
@@ -110,12 +110,12 @@ public class PullConnector extends UntypedActor {
                         this.lastQuery = query;
                         getSelf().tell(CONTINUE_REQUESTING_SINCE_LAST, getSelf());
                     } else {
-                        scheduleNextRequest();
+                        scheduleNextPull();
                     }
                 });
     }
 
-    private void scheduleNextRequest() {
+    private void scheduleNextPull() {
         getContext().system().scheduler().scheduleOnce(Duration.apply(2, MINUTES),
                 self(), REQUEST_SINCE_LAST, getContext().dispatcher(), self());
     }

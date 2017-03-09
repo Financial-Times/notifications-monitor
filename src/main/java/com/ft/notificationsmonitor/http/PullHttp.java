@@ -4,6 +4,7 @@ import akka.actor.ActorSystem;
 import akka.http.javadsl.ConnectHttp;
 import akka.http.javadsl.Http;
 import akka.http.javadsl.OutgoingConnection;
+import akka.http.javadsl.model.HttpHeader;
 import akka.http.javadsl.model.HttpRequest;
 import akka.http.javadsl.model.HttpResponse;
 import akka.http.javadsl.model.Query;
@@ -29,6 +30,8 @@ import static akka.http.javadsl.model.StatusCodes.OK;
 
 public class PullHttp {
 
+    private static final HttpHeader INCLUDE_LAST_MODIFIED_DATE = RawHeader.create("X-Policy", "INCLUDE_LAST_MODIFIED_DATE");
+
     private Materializer mat;
 
     private Flow<HttpRequest, HttpResponse, CompletionStage<OutgoingConnection>> connectionFlow;
@@ -43,7 +46,8 @@ public class PullHttp {
     public CompletionStage<PullPage> makeRequest(final Query query, final String tid) {
         HttpRequest request = HttpRequest.GET(httpConfig.getUri() + "?" + query.render(UTF_8))
                 .addHeader(Authorization.basic(httpConfig.getUsername(), httpConfig.getPassword()))
-                .addHeader(RawHeader.create("X-Request-Id", tid));
+                .addHeader(RawHeader.create("X-Request-Id", tid))
+                .addHeader(INCLUDE_LAST_MODIFIED_DATE);
         return Source.single(request)
                 .via(connectionFlow)
                 .runWith(Sink.head(), mat)
