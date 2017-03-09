@@ -27,7 +27,7 @@ public class History {
     public void clearSomeHistory() {
         history = new LinkedList<>(
                 history.stream()
-                        .filter(e -> e.getDate().isBefore(ZonedDateTime.now().minusMinutes(5)))
+                        .filter(e -> e.getDate().isAfter(ZonedDateTime.now().minusMinutes(5)))
                         .collect(Collectors.toList())
         );
     }
