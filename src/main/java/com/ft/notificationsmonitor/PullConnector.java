@@ -55,19 +55,18 @@ public class PullConnector extends UntypedActor {
 
     private void pullUntilEmpty(final boolean firstInSeries) {
         final String tid = UUID.randomUUID().toString();
-        log.debug("Making pull request. query=\"{}\" tid={}", lastQuery.render(UTF_8), tid);
         CompletionStage<PullPage> pageF = pullHttp.makeRequest(lastQuery, tid);
         pageF.whenComplete((page, failure) -> {
             if (failure != null) {
-                log.error(failure, "Failed notifications pull request.");
+                log.error(failure, "Failed notifications pull request. query=\"{}\" tid={}", lastQuery, tid);
                 scheduleNextPull();
             } else {
-                parseNotificationEntries(page, firstInSeries);
+                parseNotificationEntries(page, firstInSeries, tid);
             }
         });
     }
 
-    private void parseNotificationEntries(final PullPage page, final boolean firstInSeries) {
+    private void parseNotificationEntries(final PullPage page, final boolean firstInSeries, final String tid) {
         final Collection<PullEntry> notifications = JavaConverters.asJavaCollection(page.notifications());
         if (notifications.isEmpty()) {
             if (firstInSeries) {
@@ -81,7 +80,14 @@ public class PullConnector extends UntypedActor {
                     if (shouldSkip) {
                         log.info("ContentPlaceholder id={} tid={} lastModified=\"{}\"", entry.id(), entry.publishReference(), entry.lastModified().format(ISO_INSTANT));
                     } else {
-                        log.info("id={} tid={} lastModified=\"{}\" notificationDate=\"{}\"", entry.id(), entry.publishReference(), entry.lastModified().format(ISO_INSTANT), entry.notificationDate().format(ISO_INSTANT));
+                        log.info(String.format("id=%s publishReference=%s lastModified=\"%s\" notificationDate=\"%s\" query=\"%s\" tid=%s",
+                                entry.id(),
+                                entry.publishReference(),
+                                entry.lastModified().format(ISO_INSTANT),
+                                entry.notificationDate().format(ISO_INSTANT),
+                                lastQuery.render(UTF_8),
+                                tid)
+                        );
                         if (history.verifyAndAddToHistory(datedEntry)) {
                             pairMatchers.forEach(pairMatcher -> pairMatcher.tell(datedEntry, self()));
                         } else {
