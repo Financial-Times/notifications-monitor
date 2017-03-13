@@ -12,6 +12,7 @@ import java.time.ZonedDateTime;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import static java.time.format.DateTimeFormatter.ISO_INSTANT;
@@ -52,17 +53,32 @@ public class PairMatcher extends UntypedActor {
 
     private void matchEntry(final DatedEntry datedEntry, final List<DatedEntry> entries, final List<DatedEntry> oppositeEntries, String notificationType) {
         final NotificationEntry entry = datedEntry.getEntry();
-        Optional<DatedEntry> pair = oppositeEntries.stream().filter(p -> p.getEntry().getId().equals(entry.getId())).findFirst();
-        if (pair.isPresent()) {
-            log.debug("Matched {} entry {}", notificationType, entry.getId());
-            oppositeEntries.remove(pair.get());
-        } else {
-            addEntry(datedEntry, entries, notificationType);
-        }
+        addEntry(datedEntry, entry, entries, notificationType);
+        removeMatched(entries, oppositeEntries);
     }
 
-    private void addEntry(final DatedEntry datedEntry, final List<DatedEntry> entries, String notificationType) {
-        final NotificationEntry entry = datedEntry.getEntry();
+    private void removeMatched(List<DatedEntry> entries, List<DatedEntry> oppositeEntries) {
+        final Set<DatedEntry> intersection = entries.stream().collect(Collectors.toSet());
+        intersection.removeIf(de ->
+                oppositeEntries.stream().noneMatch(ode ->
+                        de.getEntry().getId().equals(ode.getEntry().getId()) &&
+                                de.getEntry().getPublishReference().equals(ode.getEntry().getPublishReference())
+                )
+        );
+        intersection.forEach(matchedDatedEntry -> {
+            entries.removeIf(de ->
+                    de.getEntry().getId().equals(matchedDatedEntry.getEntry().getId()) &&
+                            de.getEntry().getPublishReference().equals(matchedDatedEntry.getEntry().getPublishReference())
+            );
+            oppositeEntries.removeIf(de ->
+                    de.getEntry().getId().equals(matchedDatedEntry.getEntry().getId()) &&
+                            de.getEntry().getPublishReference().equals(matchedDatedEntry.getEntry().getPublishReference())
+            );
+            log.debug("Matched entry id={} publishReference={}", matchedDatedEntry.getEntry().getId(), matchedDatedEntry.getEntry().getPublishReference());
+        });
+    }
+
+    private void addEntry(final DatedEntry datedEntry, final NotificationEntry entry, final List<DatedEntry> entries, String notificationType) {
         final Optional<DatedEntry> presentEntryO = entries.stream().filter(p -> p.getEntry().getId().equals(entry.getId())).findFirst();
         if (presentEntryO.isPresent()) {
             resolveDuplicates(datedEntry, entries, presentEntryO.get(), notificationType);

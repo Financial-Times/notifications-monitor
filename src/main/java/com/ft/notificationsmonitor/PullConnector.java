@@ -59,29 +59,38 @@ public class PullConnector extends UntypedActor {
         CompletionStage<PullPage> pageF = pullHttp.makeRequest(lastQuery, tid);
         pageF.whenComplete((page, failure) -> {
             if (failure != null) {
-                log.error(failure, "Failed notifications pull request.");
-                scheduleNextPull();
+                log.error(failure, "Failed notifications pull request. query=\"{}\" tid={}", lastQuery, tid);
+                scheduleLaterPull();
             } else {
-                parseNotificationEntries(page, firstInSeries);
-                parseLinkAndScheduleNextPull(page);
+                parseNotificationEntries(page, firstInSeries, tid);
             }
         });
     }
 
-    private void parseNotificationEntries(final PullPage page, final boolean firstInSeries) {
+    private void parseNotificationEntries(final PullPage page, final boolean firstInSeries, final String tid) {
         final Collection<PullEntry> notifications = JavaConverters.asJavaCollection(page.notifications());
+        parseAndSaveLink(page);
         if (notifications.isEmpty()) {
             if (firstInSeries) {
                 log.info("heartbeat");
             }
+            scheduleLaterPull();
         } else {
+            final ZonedDateTime now = ZonedDateTime.now();
             notifications.forEach(entry -> {
-                final DatedEntry datedEntry = new DatedEntry(entry, ZonedDateTime.now());
+                final DatedEntry datedEntry = new DatedEntry(entry, now);
                 shouldSkipBecauseItsPlaceholder(entry).thenAccept(shouldSkip -> {
                     if (shouldSkip) {
                         log.info("ContentPlaceholder id={} tid={} lastModified=\"{}\"", entry.id(), entry.publishReference(), entry.lastModified().format(ISO_INSTANT));
                     } else {
-                        log.info("id={} tid={} lastModified=\"{}\" notificationDate=\"{}\"", entry.id(), entry.publishReference(), entry.lastModified().format(ISO_INSTANT), entry.notificationDate().format(ISO_INSTANT));
+                        log.info(String.format("id=%s publishReference=%s lastModified=\"%s\" notificationDate=\"%s\" query=\"%s\" tid=%s",
+                                entry.id(),
+                                entry.publishReference(),
+                                entry.lastModified().format(ISO_INSTANT),
+                                entry.notificationDate().format(ISO_INSTANT),
+                                lastQuery.render(UTF_8),
+                                tid)
+                        );
                         if (history.verifyAndAddToHistory(datedEntry)) {
                             pairMatchers.forEach(pairMatcher -> pairMatcher.tell(datedEntry, self()));
                         } else {
@@ -90,6 +99,7 @@ public class PullConnector extends UntypedActor {
                     }
                 });
             });
+            getSelf().tell(CONTINUE_REQUESTING_SINCE_LAST, getSelf());
         }
         history.clearSomeHistory();
     }
@@ -103,22 +113,17 @@ public class PullConnector extends UntypedActor {
                 .thenApply(nativeContentO -> nativeContentO.isPresent() && nativeContentO.get().contains("ContentPlaceholder"));
     }
 
-    private void parseLinkAndScheduleNextPull(final PullPage page) {
+    private void parseAndSaveLink(final PullPage page) {
         JavaConverters.asJavaCollection(page.links())
                 .stream()
                 .findFirst()
                 .map(link -> Uri.create(link.href()).query())
                 .ifPresent(query -> {
-                    if (!query.equals(lastQuery)) {
-                        this.lastQuery = query;
-                        getSelf().tell(CONTINUE_REQUESTING_SINCE_LAST, getSelf());
-                    } else {
-                        scheduleNextPull();
-                    }
+                    this.lastQuery = query;
                 });
     }
 
-    private void scheduleNextPull() {
+    private void scheduleLaterPull() {
         getContext().system().scheduler().scheduleOnce(Duration.apply(2, MINUTES),
                 self(), REQUEST_SINCE_LAST, getContext().dispatcher(), self());
     }
