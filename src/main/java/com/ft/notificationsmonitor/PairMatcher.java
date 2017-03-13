@@ -9,11 +9,9 @@ import com.ft.notificationsmonitor.model.DatedEntry;
 import com.ft.notificationsmonitor.model.NotificationEntry;
 
 import java.time.ZonedDateTime;
-import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Optional;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 import static java.time.format.DateTimeFormatter.ISO_INSTANT;
@@ -54,22 +52,17 @@ public class PairMatcher extends UntypedActor {
 
     private void matchEntry(final DatedEntry datedEntry, final List<DatedEntry> entries, final List<DatedEntry> oppositeEntries, String notificationType) {
         final NotificationEntry entry = datedEntry.getEntry();
-        addEntry(datedEntry, entry, entries, notificationType);
-        removeMatched(entries, oppositeEntries);
+        Optional<DatedEntry> pair = oppositeEntries.stream().filter(p -> p.getEntry().getId().equals(entry.getId())).findFirst();
+        if (pair.isPresent()) {
+            log.debug("Matched {} entry {}", notificationType, entry.getId());
+            oppositeEntries.remove(pair.get());
+        } else {
+            addEntry(datedEntry, entries, notificationType);
+        }
     }
 
-    private void removeMatched(List<DatedEntry> entries, List<DatedEntry> oppositeEntries) {
-        Set<DatedEntry> entriesSet = entries.stream().collect(Collectors.toSet());
-        Set<DatedEntry> oEntriesSet = oppositeEntries.stream().collect(Collectors.toSet());
-        entriesSet.retainAll(oEntriesSet);
-        entriesSet.forEach(de -> {
-            entries.remove(de);
-            oppositeEntries.remove(de);
-            log.debug("Matched entry id={} publishReference={} lastModifiedDate={}", de.getEntry().getId(), de.getEntry().getPublishReference(), de.getEntry().getLastModified());
-        });
-    }
-
-    private void addEntry(final DatedEntry datedEntry, final NotificationEntry entry, final List<DatedEntry> entries, String notificationType) {
+    private void addEntry(final DatedEntry datedEntry, final List<DatedEntry> entries, String notificationType) {
+        final NotificationEntry entry = datedEntry.getEntry();
         final Optional<DatedEntry> presentEntryO = entries.stream().filter(p -> p.getEntry().getId().equals(entry.getId())).findFirst();
         if (presentEntryO.isPresent()) {
             resolveDuplicates(datedEntry, entries, presentEntryO.get(), notificationType);
