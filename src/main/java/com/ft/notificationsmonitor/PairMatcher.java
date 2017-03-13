@@ -9,7 +9,6 @@ import com.ft.notificationsmonitor.model.DatedEntry;
 import com.ft.notificationsmonitor.model.NotificationEntry;
 
 import java.time.ZonedDateTime;
-import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Optional;

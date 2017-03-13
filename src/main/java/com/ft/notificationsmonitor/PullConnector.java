@@ -63,7 +63,6 @@ public class PullConnector extends UntypedActor {
                 scheduleNextPull();
             } else {
                 parseNotificationEntries(page, firstInSeries);
-                parseLinkAndScheduleNextPull(page);
             }
         });
     }
@@ -74,6 +73,7 @@ public class PullConnector extends UntypedActor {
             if (firstInSeries) {
                 log.info("heartbeat");
             }
+            parseLinkAndScheduleNextPull(page);
         } else {
             notifications.forEach(entry -> {
                 final DatedEntry datedEntry = new DatedEntry(entry, ZonedDateTime.now());
@@ -90,6 +90,7 @@ public class PullConnector extends UntypedActor {
                     }
                 });
             });
+            getSelf().tell(CONTINUE_REQUESTING_SINCE_LAST, getSelf());
         }
         history.clearSomeHistory();
     }
@@ -109,12 +110,8 @@ public class PullConnector extends UntypedActor {
                 .findFirst()
                 .map(link -> Uri.create(link.href()).query())
                 .ifPresent(query -> {
-                    if (!query.equals(lastQuery)) {
-                        this.lastQuery = query;
-                        getSelf().tell(CONTINUE_REQUESTING_SINCE_LAST, getSelf());
-                    } else {
-                        scheduleNextPull();
-                    }
+                    this.lastQuery = query;
+                    scheduleNextPull();
                 });
     }
 
