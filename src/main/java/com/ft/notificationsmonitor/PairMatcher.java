@@ -9,7 +9,6 @@ import com.ft.notificationsmonitor.model.DatedEntry;
 import com.ft.notificationsmonitor.model.NotificationEntry;
 
 import java.time.ZonedDateTime;
-import java.util.Date;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
@@ -59,17 +58,25 @@ public class PairMatcher extends UntypedActor {
         removeMatched(entries, oppositeEntries);
     }
 
-    private void removeMatched(final DatedEntry datedEntry, final List<DatedEntry> entries, final List<DatedEntry> oppositeEntries) {
-        final Optional<DatedEntry> matchedEntryO = oppositeEntries.stream().filter(de ->
-                de.getEntry().getId().equals(datedEntry.getEntry().getId()) &&
-                        de.getEntry().getPublishReference().equals(datedEntry.getEntry().getPublishReference())
-        ).findFirst();
-        if (matchedEntryO.isPresent()) {
-            final DatedEntry matchedDatedEntry = matchedEntryO.get();
-            entries.remove(datedEntry);
-            oppositeEntries.remove(matchedEntryO.get());
+    private void removeMatched(List<DatedEntry> entries, List<DatedEntry> oppositeEntries) {
+        final Set<DatedEntry> intersection = entries.stream().collect(Collectors.toSet());
+        intersection.removeIf(de ->
+                oppositeEntries.stream().noneMatch(ode ->
+                        de.getEntry().getId().equals(ode.getEntry().getId()) &&
+                                de.getEntry().getPublishReference().equals(ode.getEntry().getPublishReference())
+                )
+        );
+        intersection.forEach(matchedDatedEntry -> {
+            entries.removeIf(de ->
+                    de.getEntry().getId().equals(matchedDatedEntry.getEntry().getId()) &&
+                            de.getEntry().getPublishReference().equals(matchedDatedEntry.getEntry().getPublishReference())
+            );
+            oppositeEntries.removeIf(de ->
+                    de.getEntry().getId().equals(matchedDatedEntry.getEntry().getId()) &&
+                            de.getEntry().getPublishReference().equals(matchedDatedEntry.getEntry().getPublishReference())
+            );
             log.debug("Matched entry id={} publishReference={}", matchedDatedEntry.getEntry().getId(), matchedDatedEntry.getEntry().getPublishReference());
-        }
+        });
     }
 
     private void addEntry(final DatedEntry datedEntry, final NotificationEntry entry, final List<DatedEntry> entries, String notificationType) {
