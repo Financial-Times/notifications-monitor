@@ -87,7 +87,7 @@ public class PushReader extends UntypedActor {
             if (failure != null) {
                 log.error(failure, "Error deserializing notifications response");
             } else {
-                log.info("id={} tid={} lastModified=\"{}\"", entry.id(), entry.publishReference(), entry.lastModified().format(DateTimeFormatter.ISO_INSTANT));
+                log.info("id={} publishReference={} lastModified=\"{}\"", entry.id(), entry.publishReference(), entry.lastModified().format(DateTimeFormatter.ISO_INSTANT));
                 pairMatcher.tell(new DatedEntry(entry, ZonedDateTime.now()), self());
             }
         });

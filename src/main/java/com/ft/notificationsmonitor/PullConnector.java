@@ -55,11 +55,12 @@ public class PullConnector extends UntypedActor {
 
     private void pullUntilEmpty(final boolean firstInSeries) {
         final String tid = UUID.randomUUID().toString();
+        log.debug("Making pull request. query=\"{}\" tid={}", lastQuery.render(UTF_8), tid);
         CompletionStage<PullPage> pageF = pullHttp.makeRequest(lastQuery, tid);
         pageF.whenComplete((page, failure) -> {
             if (failure != null) {
                 log.error(failure, "Failed notifications pull request. query=\"{}\" tid={}", lastQuery, tid);
-                scheduleNextPull();
+                scheduleLaterPull();
             } else {
                 parseNotificationEntries(page, firstInSeries, tid);
             }
@@ -68,14 +69,16 @@ public class PullConnector extends UntypedActor {
 
     private void parseNotificationEntries(final PullPage page, final boolean firstInSeries, final String tid) {
         final Collection<PullEntry> notifications = JavaConverters.asJavaCollection(page.notifications());
+        parseAndSaveLink(page);
         if (notifications.isEmpty()) {
             if (firstInSeries) {
                 log.info("heartbeat");
             }
-            parseLinkAndScheduleNextPull(page);
+            scheduleLaterPull();
         } else {
+            final ZonedDateTime now = ZonedDateTime.now();
             notifications.forEach(entry -> {
-                final DatedEntry datedEntry = new DatedEntry(entry, ZonedDateTime.now());
+                final DatedEntry datedEntry = new DatedEntry(entry, now);
                 shouldSkipBecauseItsPlaceholder(entry).thenAccept(shouldSkip -> {
                     if (shouldSkip) {
                         log.info("ContentPlaceholder id={} tid={} lastModified=\"{}\"", entry.id(), entry.publishReference(), entry.lastModified().format(ISO_INSTANT));
@@ -110,18 +113,17 @@ public class PullConnector extends UntypedActor {
                 .thenApply(nativeContentO -> nativeContentO.isPresent() && nativeContentO.get().contains("ContentPlaceholder"));
     }
 
-    private void parseLinkAndScheduleNextPull(final PullPage page) {
+    private void parseAndSaveLink(final PullPage page) {
         JavaConverters.asJavaCollection(page.links())
                 .stream()
                 .findFirst()
                 .map(link -> Uri.create(link.href()).query())
                 .ifPresent(query -> {
                     this.lastQuery = query;
-                    scheduleNextPull();
                 });
     }
 
-    private void scheduleNextPull() {
+    private void scheduleLaterPull() {
         getContext().system().scheduler().scheduleOnce(Duration.apply(2, MINUTES),
                 self(), REQUEST_SINCE_LAST, getContext().dispatcher(), self());
     }
