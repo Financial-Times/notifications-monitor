@@ -55,6 +55,7 @@ public class PullConnector extends UntypedActor {
 
     private void pullUntilEmpty(final boolean firstInSeries) {
         final String tid = UUID.randomUUID().toString();
+        log.debug("Making pull request. query=\"{}\" tid={}", lastQuery.render(UTF_8), tid);
         CompletionStage<PullPage> pageF = pullHttp.makeRequest(lastQuery, tid);
         pageF.whenComplete((page, failure) -> {
             if (failure != null) {
