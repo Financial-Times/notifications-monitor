@@ -59,9 +59,9 @@ public class PairMatcher extends UntypedActor {
     }
 
     private void removeMatched(final DatedEntry datedEntry, final List<DatedEntry> entries, final List<DatedEntry> oppositeEntries, final String notificationType) {
-        final Set<DatedEntry> intersection = entries.stream().collect(Collectors.toSet());
+        final Set<DatedEntry> intersection = oppositeEntries.stream().collect(Collectors.toSet());
         intersection.removeIf(de ->
-                oppositeEntries.stream().noneMatch(ode ->
+                entries.stream().noneMatch(ode ->
                         de.getEntry().getId().equals(ode.getEntry().getId()) &&
                                 de.getEntry().getPublishReference().equals(ode.getEntry().getPublishReference())
                 )
@@ -75,7 +75,7 @@ public class PairMatcher extends UntypedActor {
                     de.getEntry().getId().equals(matchedDatedEntry.getEntry().getId()) &&
                             de.getEntry().getPublishReference().equals(matchedDatedEntry.getEntry().getPublishReference())
             );
-            log.debug("Matched {} entry id={} publishReference={} matchTimeDiff={}", notificationType, matchedDatedEntry.getEntry().getId(), matchedDatedEntry.getEntry().getPublishReference(), ChronoUnit.MILLIS.between(datedEntry.getDate(), matchedDatedEntry.getDate()));
+            log.debug("Matched {} entry id={} publishReference={} matchTimeDiff={}", notificationType, matchedDatedEntry.getEntry().getId(), matchedDatedEntry.getEntry().getPublishReference(), ChronoUnit.MILLIS.between(matchedDatedEntry.getDate(), datedEntry.getDate()));
         });
     }
 

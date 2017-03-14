@@ -20,6 +20,7 @@ import java.util.concurrent.CompletableFuture;
 
 import static com.ft.notificationsmonitor.PushConnector.READER_FAILED;
 import static com.ft.notificationsmonitor.PushConnector.RECONNECT;
+import static java.time.format.DateTimeFormatter.ISO_INSTANT;
 
 public class PushReader extends UntypedActor {
 
@@ -91,8 +92,8 @@ public class PushReader extends UntypedActor {
                 log.info("id={} publishReference={} lastModified=\"{}\" foundAt=\"{}\"",
                         entry.id(),
                         entry.publishReference(),
-                        entry.lastModified().format(DateTimeFormatter.ISO_INSTANT),
-                        datedEntry.getDate());
+                        entry.lastModified().format(ISO_INSTANT),
+                        datedEntry.getDate().format(ISO_INSTANT));
                 pairMatcher.tell(datedEntry, self());
             }
         });
