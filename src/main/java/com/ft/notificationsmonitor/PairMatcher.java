@@ -77,16 +77,6 @@ public class PairMatcher extends UntypedActor {
             );
             log.debug("Matched {} entry id={} publishReference={} matchTimeDiff={}", notificationType, matchedDatedEntry.getEntry().getId(), matchedDatedEntry.getEntry().getPublishReference(), ChronoUnit.MILLIS.between(datedEntry.getDate(), matchedDatedEntry.getDate()));
         });
-//        final Optional<DatedEntry> matchedDatedEntryO = oppositeEntries.stream().filter(de ->
-//                de.getEntry().getId().equals(datedEntry.getEntry().getId()) &&
-//                        de.getEntry().getPublishReference().equals(datedEntry.getEntry().getPublishReference())
-//        ).findFirst();
-//        if (matchedDatedEntryO.isPresent()) {
-//            final DatedEntry matchedDatedEntry = matchedDatedEntryO.get();
-//            entries.remove(datedEntry);
-//            oppositeEntries.remove(matchedDatedEntryO.get());
-//            log.debug("Matched {} entry id={} publishReference={} matchTimeDiff={}", notificationType, matchedDatedEntry.getEntry().getId(), matchedDatedEntry.getEntry().getPublishReference(), ChronoUnit.MILLIS.between(datedEntry.getDate(), matchedDatedEntry.getDate()));
-//        }
     }
 
     private void addEntry(final DatedEntry datedEntry, final NotificationEntry entry, final List<DatedEntry> entries, String notificationType) {
