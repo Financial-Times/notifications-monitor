@@ -9,6 +9,7 @@ import com.ft.notificationsmonitor.model.DatedEntry;
 import com.ft.notificationsmonitor.model.NotificationEntry;
 
 import java.time.ZonedDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Optional;
@@ -51,13 +52,13 @@ public class PairMatcher extends UntypedActor {
         }
     }
 
-    private void matchEntry(final DatedEntry datedEntry, final List<DatedEntry> entries, final List<DatedEntry> oppositeEntries, String notificationType) {
+    private void matchEntry(final DatedEntry datedEntry, final List<DatedEntry> entries, final List<DatedEntry> oppositeEntries, final String notificationType) {
         final NotificationEntry entry = datedEntry.getEntry();
         addEntry(datedEntry, entry, entries, notificationType);
-        removeMatched(entries, oppositeEntries);
+        removeMatched(datedEntry, entries, oppositeEntries, notificationType);
     }
 
-    private void removeMatched(List<DatedEntry> entries, List<DatedEntry> oppositeEntries) {
+    private void removeMatched(final DatedEntry datedEntry, final List<DatedEntry> entries, final List<DatedEntry> oppositeEntries, final String notificationType) {
         final Set<DatedEntry> intersection = entries.stream().collect(Collectors.toSet());
         intersection.removeIf(de ->
                 oppositeEntries.stream().noneMatch(ode ->
@@ -74,8 +75,18 @@ public class PairMatcher extends UntypedActor {
                     de.getEntry().getId().equals(matchedDatedEntry.getEntry().getId()) &&
                             de.getEntry().getPublishReference().equals(matchedDatedEntry.getEntry().getPublishReference())
             );
-            log.debug("Matched entry id={} publishReference={}", matchedDatedEntry.getEntry().getId(), matchedDatedEntry.getEntry().getPublishReference());
+            log.debug("Matched {} entry id={} publishReference={} matchTimeDiff={}", notificationType, matchedDatedEntry.getEntry().getId(), matchedDatedEntry.getEntry().getPublishReference(), ChronoUnit.MILLIS.between(datedEntry.getDate(), matchedDatedEntry.getDate()));
         });
+//        final Optional<DatedEntry> matchedDatedEntryO = oppositeEntries.stream().filter(de ->
+//                de.getEntry().getId().equals(datedEntry.getEntry().getId()) &&
+//                        de.getEntry().getPublishReference().equals(datedEntry.getEntry().getPublishReference())
+//        ).findFirst();
+//        if (matchedDatedEntryO.isPresent()) {
+//            final DatedEntry matchedDatedEntry = matchedDatedEntryO.get();
+//            entries.remove(datedEntry);
+//            oppositeEntries.remove(matchedDatedEntryO.get());
+//            log.debug("Matched {} entry id={} publishReference={} matchTimeDiff={}", notificationType, matchedDatedEntry.getEntry().getId(), matchedDatedEntry.getEntry().getPublishReference(), ChronoUnit.MILLIS.between(datedEntry.getDate(), matchedDatedEntry.getDate()));
+//        }
     }
 
     private void addEntry(final DatedEntry datedEntry, final NotificationEntry entry, final List<DatedEntry> entries, String notificationType) {
