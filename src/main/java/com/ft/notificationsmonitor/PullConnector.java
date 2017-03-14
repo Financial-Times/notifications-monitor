@@ -76,13 +76,14 @@ public class PullConnector extends UntypedActor {
             final ZonedDateTime now = ZonedDateTime.now();
             notifications.forEach(entry -> {
                 final DatedEntry datedEntry = new DatedEntry(entry, now);
-                log.info(String.format("id=%s publishReference=%s lastModified=\"%s\" notificationDate=\"%s\" query=\"%s\" tid=%s",
+                log.info(String.format("id=%s publishReference=%s lastModified=\"%s\" notificationDate=\"%s\" query=\"%s\" tid=%s foundAt=\"%s\"",
                         entry.id(),
                         entry.publishReference(),
                         entry.lastModified().format(ISO_INSTANT),
                         entry.notificationDate().format(ISO_INSTANT),
                         lastQuery.render(UTF_8),
-                        tid)
+                        tid,
+                        now.format(ISO_INSTANT))
                 );
                 if (history.verifyAndAddToHistory(datedEntry)) {
                     pairMatchers.forEach(pairMatcher -> pairMatcher.tell(datedEntry, self()));
