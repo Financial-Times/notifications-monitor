@@ -9,7 +9,6 @@ import akka.http.javadsl.model.Query;
 import akka.http.javadsl.model.Uri;
 import akka.japi.Creator;
 import akka.japi.Pair;
-import com.ft.notificationsmonitor.http.NativeHttp;
 import com.ft.notificationsmonitor.http.PullHttp;
 import com.ft.notificationsmonitor.model.DatedEntry;
 import com.ft.notificationsmonitor.model.PullEntry;
@@ -33,14 +32,12 @@ public class PullConnector extends UntypedActor {
     private LoggingAdapter log = Logging.getLogger(getContext().system(), this);
 
     private PullHttp pullHttp;
-    private NativeHttp nativeHttp;
     private List<ActorRef> pairMatchers;
     private Query lastQuery = Query.create(new Pair<>("since", ZonedDateTime.now().format(ISO_INSTANT)));
     private History history = new History();
 
-    public PullConnector(final PullHttp pullHttp, final NativeHttp nativeHttp, final List<ActorRef> pairMatchers) {
+    public PullConnector(final PullHttp pullHttp, final List<ActorRef> pairMatchers) {
         this.pullHttp = pullHttp;
-        this.nativeHttp = nativeHttp;
         this.pairMatchers = pairMatchers;
     }
 
@@ -79,38 +76,23 @@ public class PullConnector extends UntypedActor {
             final ZonedDateTime now = ZonedDateTime.now();
             notifications.forEach(entry -> {
                 final DatedEntry datedEntry = new DatedEntry(entry, now);
-                shouldSkipBecauseItsPlaceholder(entry).thenAccept(shouldSkip -> {
-                    if (shouldSkip) {
-                        log.info("ContentPlaceholder id={} tid={} lastModified=\"{}\"", entry.id(), entry.publishReference(), entry.lastModified().format(ISO_INSTANT));
-                    } else {
-                        log.info(String.format("id=%s publishReference=%s lastModified=\"%s\" notificationDate=\"%s\" query=\"%s\" tid=%s",
-                                entry.id(),
-                                entry.publishReference(),
-                                entry.lastModified().format(ISO_INSTANT),
-                                entry.notificationDate().format(ISO_INSTANT),
-                                lastQuery.render(UTF_8),
-                                tid)
-                        );
-                        if (history.verifyAndAddToHistory(datedEntry)) {
-                            pairMatchers.forEach(pairMatcher -> pairMatcher.tell(datedEntry, self()));
-                        } else {
-                            log.warning("Duplicate entry. Same id and publishReference was seen in the last x minutes. id={} publishReference={} lastModifiedDate={} notificationDate={}", entry.getId(), entry.getPublishReference(), entry.getLastModified().format(ISO_INSTANT), entry.notificationDate().format(ISO_INSTANT));
-                        }
-                    }
-                });
+                log.info(String.format("id=%s publishReference=%s lastModified=\"%s\" notificationDate=\"%s\" query=\"%s\" tid=%s",
+                        entry.id(),
+                        entry.publishReference(),
+                        entry.lastModified().format(ISO_INSTANT),
+                        entry.notificationDate().format(ISO_INSTANT),
+                        lastQuery.render(UTF_8),
+                        tid)
+                );
+                if (history.verifyAndAddToHistory(datedEntry)) {
+                    pairMatchers.forEach(pairMatcher -> pairMatcher.tell(datedEntry, self()));
+                } else {
+                    log.warning("Duplicate entry. Same id and publishReference was seen in the last x minutes. id={} publishReference={} lastModifiedDate={} notificationDate={}", entry.getId(), entry.getPublishReference(), entry.getLastModified().format(ISO_INSTANT), entry.notificationDate().format(ISO_INSTANT));
+                }
             });
             getSelf().tell(CONTINUE_REQUESTING_SINCE_LAST, getSelf());
         }
         history.clearSomeHistory();
-    }
-
-    private CompletionStage<Boolean> shouldSkipBecauseItsPlaceholder(final PullEntry entry) {
-        return nativeHttp.getNativeContent(entry.id())
-                .exceptionally(ex -> {
-                    log.error(ex, "Failed getting native content to verify if it's placeholder for id={}", entry.id());
-                    return Optional.empty();
-                })
-                .thenApply(nativeContentO -> nativeContentO.isPresent() && nativeContentO.get().contains("ContentPlaceholder"));
     }
 
     private void parseAndSaveLink(final PullPage page) {
@@ -128,13 +110,13 @@ public class PullConnector extends UntypedActor {
                 self(), REQUEST_SINCE_LAST, getContext().dispatcher(), self());
     }
 
-    public static Props props(final PullHttp pullHttp, final NativeHttp nativeHttp, final List<ActorRef> pairMatchers) {
+    public static Props props(final PullHttp pullHttp, final List<ActorRef> pairMatchers) {
         return Props.create(new Creator<PullConnector>() {
             private static final long serialVersionUID = 1L;
 
             @Override
             public PullConnector create() throws Exception {
-                return new PullConnector(pullHttp, nativeHttp, pairMatchers);
+                return new PullConnector(pullHttp, pairMatchers);
             }
         });
     }
