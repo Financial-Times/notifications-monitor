@@ -52,7 +52,7 @@ public class PullConnector extends UntypedActor {
 
     private void pullUntilEmpty(final boolean firstInSeries) {
         final String tid = UUID.randomUUID().toString();
-        log.debug("Making pull request. query=\"{}\" tid={}", lastQuery.render(UTF_8), tid);
+        log.info("Making pull request. query=\"{}\" tid={}", lastQuery.render(UTF_8), tid);
         pullHttp.makeRequest(lastQuery, tid).whenComplete((page, failure) -> {
             if (failure != null) {
                 log.error(failure, "Failed notifications pull request. query=\"{}\" tid={}", lastQuery, tid);
@@ -64,6 +64,7 @@ public class PullConnector extends UntypedActor {
     }
 
     private void parseNotificationEntries(final PullPage page, final boolean firstInSeries, final String tid) {
+        final Query currentQuery = lastQuery;
         final Collection<PullEntry> notifications = JavaConverters.asJavaCollection(page.notifications());
         parseAndSaveLink(page);
         if (notifications.isEmpty()) {
@@ -75,19 +76,27 @@ public class PullConnector extends UntypedActor {
             final ZonedDateTime now = ZonedDateTime.now();
             notifications.forEach(entry -> {
                 final DatedEntry datedEntry = new DatedEntry(entry, now);
-                log.info(String.format("id=%s publishReference=%s lastModified=\"%s\" notificationDate=\"%s\" query=\"%s\" tid=%s foundAt=\"%s\"",
-                        entry.id(),
-                        entry.publishReference(),
-                        entry.lastModified().format(ISO_INSTANT),
-                        entry.notificationDate().format(ISO_INSTANT),
-                        lastQuery.render(UTF_8),
-                        tid,
-                        datedEntry.getDate().format(ISO_INSTANT))
-                );
                 if (history.verifyAndAddToHistory(datedEntry)) {
+                    log.info(String.format("id=%s publishReference=%s lastModified=\"%s\" notificationDate=\"%s\" query=\"%s\" tid=%s foundAt=\"%s\"",
+                            entry.id(),
+                            entry.publishReference(),
+                            entry.lastModified().format(ISO_INSTANT),
+                            entry.notificationDate().format(ISO_INSTANT),
+                            currentQuery.render(UTF_8),
+                            tid,
+                            datedEntry.getDate().format(ISO_INSTANT))
+                    );
                     pairMatchers.forEach(pairMatcher -> pairMatcher.tell(datedEntry, self()));
                 } else {
-                    log.warning("Duplicate entry. Same id and publishReference was seen in the last x minutes. id={} publishReference={} lastModifiedDate={} notificationDate={}", entry.getId(), entry.getPublishReference(), entry.getLastModified().format(ISO_INSTANT), entry.notificationDate().format(ISO_INSTANT));
+                    log.warning(String.format("Duplicate entry. Same id and publishReference was seen in the last 5 minutes. id=%s publishReference=%s lastModified=\"%s\" notificationDate=\"%s\" query=\"%s\" tid=%s foundAt=\"%s\"",
+                            entry.id(),
+                            entry.publishReference(),
+                            entry.lastModified().format(ISO_INSTANT),
+                            entry.notificationDate().format(ISO_INSTANT),
+                            currentQuery.render(UTF_8),
+                            tid,
+                            datedEntry.getDate().format(ISO_INSTANT))
+                    );
                 }
             });
             getSelf().tell(CONTINUE_REQUESTING_SINCE_LAST, getSelf());

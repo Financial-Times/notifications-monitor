@@ -84,7 +84,7 @@ public class PairMatcher extends UntypedActor {
         if (presentEntryO.isPresent()) {
             resolveDuplicates(datedEntry, entries, presentEntryO.get(), notificationType);
         } else {
-            log.debug("Adding {} entry {}", notificationType, entry.getId());
+            log.info("Adding {} entry {}", notificationType, entry.getId());
             entries.add(datedEntry);
         }
     }
