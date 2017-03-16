@@ -15,17 +15,20 @@ import com.ft.notificationsmonitor.model.PullEntry;
 import com.ft.notificationsmonitor.model.PullPage;
 import scala.collection.JavaConverters;
 import scala.concurrent.duration.Duration;
+import scala.concurrent.duration.FiniteDuration;
 
 import java.time.ZonedDateTime;
-import java.util.*;
-import java.util.concurrent.CompletionStage;
+import java.util.Collection;
+import java.util.List;
+import java.util.UUID;
 
 import static akka.http.javadsl.model.HttpCharsets.UTF_8;
 import static java.time.format.DateTimeFormatter.ISO_INSTANT;
-import static java.util.concurrent.TimeUnit.MINUTES;
+import static java.util.concurrent.TimeUnit.SECONDS;
 
 public class PullConnector extends UntypedActor {
 
+    private static final FiniteDuration POLL_INTERVAL = Duration.apply(5, SECONDS);
     private static final String CONTINUE_REQUESTING_SINCE_LAST = "ContinueRequestingSinceLast";
     static final String REQUEST_SINCE_LAST = "RequestSinceLast";
 
@@ -115,8 +118,7 @@ public class PullConnector extends UntypedActor {
     }
 
     private void scheduleLaterPull() {
-        getContext().system().scheduler().scheduleOnce(Duration.apply(2, MINUTES),
-                self(), REQUEST_SINCE_LAST, getContext().dispatcher(), self());
+        getContext().system().scheduler().scheduleOnce(POLL_INTERVAL, self(), REQUEST_SINCE_LAST, getContext().dispatcher(), self());
     }
 
     public static Props props(final PullHttp pullHttp, final List<ActorRef> pairMatchers) {
