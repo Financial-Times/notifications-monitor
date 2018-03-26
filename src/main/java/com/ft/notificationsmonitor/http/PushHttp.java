@@ -13,7 +13,7 @@ import akka.stream.javadsl.Flow;
 import akka.stream.javadsl.Sink;
 import akka.stream.javadsl.Source;
 import akka.util.ByteString;
-import com.ft.notificationsmonitor.model.HttpConfig;
+import com.ft.notificationsmonitor.model.PushHttpConfig;
 
 import java.util.concurrent.CompletionStage;
 
@@ -24,16 +24,16 @@ public class PushHttp {
     private Materializer mat;
 
     private final Flow<HttpRequest, HttpResponse, CompletionStage<OutgoingConnection>> connectionFlow;
-    private final HttpConfig httpConfig;
+    private final PushHttpConfig httpConfig;
 
-    public PushHttp(final ActorSystem sys, final HttpConfig httpConfig) {
+    public PushHttp(final ActorSystem sys, final PushHttpConfig httpConfig) {
         this.httpConfig = httpConfig;
         mat = ActorMaterializer.create(sys);
         connectionFlow = Http.get(sys).outgoingConnection(ConnectHttp.toHostHttps(httpConfig.getHostname(), httpConfig.getPort()));
     }
 
     public CompletionStage<Source<ByteString, Object>> makeRequest() {
-        final HttpRequest request = HttpRequest.GET(httpConfig.getUri())
+        final HttpRequest request = HttpRequest.create().withUri(httpConfig.getUri())
                 .addHeader(Authorization.basic(httpConfig.getUsername(), httpConfig.getPassword()));
         return Source.single(request)
                 .via(connectionFlow)

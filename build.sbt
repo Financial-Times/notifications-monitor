@@ -1,6 +1,6 @@
 name := """notifications-monitor"""
 
-version := "1.0.0"
+version := "1.0.1-SNAPSHOT"
 
 scalaVersion := "2.12.1"
 
@@ -18,10 +18,25 @@ libraryDependencies ++= Seq(
 
 mainClass in (Compile, run) := Some("com.ft.notificationsmonitor.NotificationsMonitor")
 
+javaOptions in run += "-XX:+CMSClassUnloadingEnabled"
+
 scalacOptions ++= Seq("-feature", "-language:postfixOps")
 
 testOptions in Test := Seq(Tests.Argument(TestFrameworks.JUnit, "-q"))
 
 crossPaths := false
 
-enablePlugins(JavaAppPackaging)
+enablePlugins(sbtdocker.DockerPlugin, JavaAppPackaging)
+
+lazy val dockerSettings = Seq(
+  dockerfile in docker := {
+    val appDir: File = stage.value
+    val targetDir = "/notifications-monitor"
+
+    sbtdocker.immutable.Dockerfile.empty
+      .from("openjdk:8-jdk-alpine")
+      .copy(appDir, targetDir)
+      .expose(8080)
+      .entryPoint(s"$targetDir/bin/${executableScriptName.value}")
+  }
+)

@@ -7,6 +7,7 @@ import akka.http.javadsl.Http;
 import com.ft.notificationsmonitor.http.PullHttp;
 import com.ft.notificationsmonitor.http.PushHttp;
 import com.ft.notificationsmonitor.model.HttpConfig;
+import com.ft.notificationsmonitor.model.PushHttpConfig;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 import org.slf4j.Logger;
@@ -44,12 +45,19 @@ public class NotificationsMonitor {
         Config sensitiveConfig = ConfigFactory.parseFile(new File("src/main/resources/.sensitive.conf"));
         Config config = ConfigFactory.load().withFallback(sensitiveConfig);
         ActorRef pushPullMatcher = sys.actorOf(PairMatcher.props("push", "pull"), "matcherPushPull");
-        HttpConfig pushHttpConfig = new HttpConfig(config.getString("push-host"), config.getInt("push-port"),
-                config.getString("push-uri"), sensitiveConfig.getString("delivery-basic-auth.username"), sensitiveConfig.getString("delivery-basic-auth.password"));
+        PushHttpConfig pushHttpConfig = new PushHttpConfig(config.getString("push-host"),
+                config.getInt("push-port"),
+                config.getString("push-uri"),
+                sensitiveConfig.getString("delivery.basic-auth.username"),
+                sensitiveConfig.getString("delivery.basic-auth.password"),
+                sensitiveConfig.getString("delivery.apiKey"));
         PushHttp pushHttp = new PushHttp(sys, pushHttpConfig);
         pushConnector = sys.actorOf(PushConnector.props(pushHttp, pushPullMatcher), "pushConnector");
-        HttpConfig pullHttpConfig = new HttpConfig(config.getString("pull-host"), config.getInt("pull-port"),
-                config.getString("pull-uri"), sensitiveConfig.getString("delivery-basic-auth.username"), sensitiveConfig.getString("delivery-basic-auth.password"));
+        HttpConfig pullHttpConfig = new HttpConfig(config.getString("pull-host"),
+                config.getInt("pull-port"),
+                config.getString("pull-uri"),
+                sensitiveConfig.getString("delivery.basic-auth.username"),
+                sensitiveConfig.getString("delivery.basic-auth.password"));
         PullHttp pullHttp = new PullHttp(sys, pullHttpConfig);
         ActorRef pullConnector = sys.actorOf(PullConnector.props(pullHttp, Collections.singletonList(pushPullMatcher)), "pullConnector");
         pullConnector.tell(REQUEST_SINCE_LAST, ActorRef.noSender());

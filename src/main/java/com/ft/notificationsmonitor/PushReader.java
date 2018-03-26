@@ -81,6 +81,7 @@ public class PushReader extends UntypedActor {
     }
 
     private void parseUnwrappedLine(final String line) {
+        System.out.println(line);
         CompletableFuture.supplyAsync(() -> {
             JsValue parser = JsonParser.apply(new ParserInput.StringBasedParserInput(line));
             return parser.convertTo(NotificationFormats.pushEntryFormat());

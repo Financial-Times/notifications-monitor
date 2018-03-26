@@ -15,6 +15,12 @@ You will need:
 
 `sbt run`
 
+## New
+
+`sbt docker:publishLocal`
+
+`docker run -it -p 8080 notifications-monitor:1.0.1-SNAPSHOT`
+
 ## To develop (on your machine):
 
 * `sbt compile`

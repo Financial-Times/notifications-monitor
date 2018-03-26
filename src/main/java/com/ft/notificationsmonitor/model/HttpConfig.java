@@ -1,17 +1,19 @@
 package com.ft.notificationsmonitor.model;
 
+import akka.http.javadsl.model.Uri;
+
 public class HttpConfig {
 
     private String hostname;
     private Integer port;
-    private String uri;
+    private Uri uri;
     private String username;
     private String password;
 
     public HttpConfig(String hostname, Integer port, String uri, String username, String password) {
         this.hostname = hostname;
         this.port = port;
-        this.uri = uri;
+        this.uri = Uri.create(uri);
         this.username = username;
         this.password = password;
     }
@@ -24,7 +26,7 @@ public class HttpConfig {
         return port;
     }
 
-    public String getUri() {
+    public Uri getUri() {
         return uri;
     }
 
