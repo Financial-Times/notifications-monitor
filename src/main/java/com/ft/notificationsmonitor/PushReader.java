@@ -17,6 +17,8 @@ import spray.json.ParserInput;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.concurrent.CompletableFuture;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import static com.ft.notificationsmonitor.PushConnector.READER_FAILED;
 import static com.ft.notificationsmonitor.PushConnector.RECONNECT;
@@ -28,6 +30,7 @@ public class PushReader extends UntypedActor {
     static final String ACK = "Ack";
     static final String COMPLETE = "Complete";
     static final String CHECK_HEARTBEAT = "CheckHeartbeat";
+    static final Pattern INNER_JSON_ENTRY = Pattern.compile(".*data: \\[(.*)\\].*");
 
     private LoggingAdapter log = Logging.getLogger(getContext().system(), this);
 
@@ -67,10 +70,12 @@ public class PushReader extends UntypedActor {
     private void parseBytes(final ByteString byteString) {
         final String line = byteString.utf8String();
         final String unwrappedLine;
-        if (line.startsWith("data: [")) {
-            unwrappedLine = line.substring(7, line.length() - 1);
+        Matcher innerJsonMatcher = INNER_JSON_ENTRY.matcher(line);
+        if (innerJsonMatcher.find()) {
+            unwrappedLine = innerJsonMatcher.group(1);
         } else {
-            unwrappedLine = line;
+            log.warning("not matching 'data: []' pattern line={}", line);
+            return;
         }
         heartbeat = ZonedDateTime.now();
         if (unwrappedLine.isEmpty()) {
