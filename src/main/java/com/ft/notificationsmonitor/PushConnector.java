@@ -48,7 +48,7 @@ public class PushConnector extends UntypedActor {
             pushHttp.makeRequest()
                     .whenComplete((response, failure) -> {
                 if (failure != null) {
-                    log.error("Failed request. Retrying in a few moments...", failure);
+                    log.error(failure, "Failed request. Retrying in a few moments...");
                     getContext().system().scheduler().scheduleOnce(Duration.apply(15, TimeUnit.SECONDS), self(), CONNECT, getContext().dispatcher(), self());
                 } else {
                     log.info("Connected to push feed.");

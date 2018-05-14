@@ -19,6 +19,6 @@ public class PushHttpConfig extends HttpConfig {
 
     @Override
     public Uri getUri() {
-        return super.getUri().query(Query.create(new Pair<>("apiKey", this.apiKey), new Pair<>("monitor", "true")));
+        return super.getUri().query(Query.create(new Pair<>("monitor", "true")));
     }
 }

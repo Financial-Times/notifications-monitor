@@ -39,25 +39,26 @@ public class NotificationsMonitor {
 
     private void run() {
         sys = ActorSystem.create("notificationsMonitor");
-
         logger.info("Starting up...");
-
-        Config sensitiveConfig = ConfigFactory.parseFile(new File("src/main/resources/.sensitive.conf"));
-        Config config = ConfigFactory.load().withFallback(sensitiveConfig);
+        final Config config = ConfigFactory.load(
+                ConfigFactory.parseFile(new File("src/main/resources/application.conf"))
+                        .withFallback(ConfigFactory.parseFile(new File("src/main/resources/.sensitive.conf")))
+                        .resolve()
+        );
         ActorRef pushPullMatcher = sys.actorOf(PairMatcher.props("push", "pull"), "matcherPushPull");
         PushHttpConfig pushHttpConfig = new PushHttpConfig(config.getString("push-host"),
                 config.getInt("push-port"),
                 config.getString("push-uri"),
-                sensitiveConfig.getString("delivery.basic-auth.username"),
-                sensitiveConfig.getString("delivery.basic-auth.password"),
-                sensitiveConfig.getString("delivery.apiKey"));
+                config.getString("delivery.basic-auth.username"),
+                config.getString("delivery.basic-auth.password"),
+                config.getString("delivery.apiKey"));
         PushHttp pushHttp = new PushHttp(sys, pushHttpConfig);
         pushConnector = sys.actorOf(PushConnector.props(pushHttp, pushPullMatcher), "pushConnector");
         HttpConfig pullHttpConfig = new HttpConfig(config.getString("pull-host"),
                 config.getInt("pull-port"),
                 config.getString("pull-uri"),
-                sensitiveConfig.getString("delivery.basic-auth.username"),
-                sensitiveConfig.getString("delivery.basic-auth.password"));
+                config.getString("delivery.basic-auth.username"),
+                config.getString("delivery.basic-auth.password"));
         PullHttp pullHttp = new PullHttp(sys, pullHttpConfig);
         ActorRef pullConnector = sys.actorOf(PullConnector.props(pullHttp, Collections.singletonList(pushPullMatcher)), "pullConnector");
         pullConnector.tell(REQUEST_SINCE_LAST, ActorRef.noSender());

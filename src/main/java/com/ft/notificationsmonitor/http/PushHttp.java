@@ -7,6 +7,7 @@ import akka.http.javadsl.OutgoingConnection;
 import akka.http.javadsl.model.HttpRequest;
 import akka.http.javadsl.model.HttpResponse;
 import akka.http.javadsl.model.headers.Authorization;
+import akka.http.javadsl.model.headers.RawHeader;
 import akka.stream.ActorMaterializer;
 import akka.stream.Materializer;
 import akka.stream.javadsl.Flow;
@@ -24,17 +25,18 @@ public class PushHttp {
     private Materializer mat;
 
     private final Flow<HttpRequest, HttpResponse, CompletionStage<OutgoingConnection>> connectionFlow;
-    private final PushHttpConfig httpConfig;
+    private final PushHttpConfig pushHttpConfig;
 
-    public PushHttp(final ActorSystem sys, final PushHttpConfig httpConfig) {
-        this.httpConfig = httpConfig;
+    public PushHttp(final ActorSystem sys, final PushHttpConfig pushHttpConfig) {
+        this.pushHttpConfig = pushHttpConfig;
         mat = ActorMaterializer.create(sys);
-        connectionFlow = Http.get(sys).outgoingConnection(ConnectHttp.toHostHttps(httpConfig.getHostname(), httpConfig.getPort()));
+        connectionFlow = Http.get(sys).outgoingConnection(ConnectHttp.toHostHttps(pushHttpConfig.getHostname(), pushHttpConfig.getPort()));
     }
 
     public CompletionStage<Source<ByteString, Object>> makeRequest() {
-        final HttpRequest request = HttpRequest.create().withUri(httpConfig.getUri())
-                .addHeader(Authorization.basic(httpConfig.getUsername(), httpConfig.getPassword()));
+        final HttpRequest request = HttpRequest.create().withUri(pushHttpConfig.getUri())
+                .addHeader(Authorization.basic(pushHttpConfig.getUsername(), pushHttpConfig.getPassword()))
+                .addHeader(RawHeader.create("x-api-key", pushHttpConfig.getApiKey()));
         return Source.single(request)
                 .via(connectionFlow)
                 .runWith(Sink.head(), mat)
