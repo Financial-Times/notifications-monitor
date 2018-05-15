@@ -26,10 +26,14 @@ You will need:
   - OS X: `brew install sbt@1` or
   - Linux: `curl https://bintray.com/sbt/rpm/rpm | sudo tee /etc/yum.repos.d/bintray-sbt-rpm.repo` and `sudo yum install sbt`
 
-* `sbt compile`
-* `sbt test`
-* `sbt run`
+```
+export DELIVERY_BASIC_AUTH_USERNAME=yourusername
+export DELIVERY_BASIC_AUTH_PASSWORD=abc
+export DELIVERY_API_KEY=abcdef
+sbt run
+```
 
+useful commands: `sbt compile` and `sbt test`
 
 ## App logic explained
 
