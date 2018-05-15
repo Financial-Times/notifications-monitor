@@ -2,40 +2,35 @@
 
 An app for analyzing outages and stability of notifications-push.
 
-## Install and run
+## Running with Docker:
+
+```
+docker build -t notifications-monitor:local .
+
+docker run
+  --env DELIVERY_BASIC_AUTH_USERNAME=yourusername
+  --env DELIVERY_BASIC_AUTH_PASSWORD=abc
+  --env DELIVERY_API_KEY=abcdef
+  notifications-monitor:local
+```
+
+The current config is set for staging-delivery, should be configurable in `application.conf`,
+later I should move all parameters to come from environment variables.
+
+## Running with Java:
 
 You will need:
 
-* Java 8 installed
-* [sbt](http://www.scala-sbt.org/download.html) installed
-  - OS X: `brew install sbt` or
+* Java 8
+* [sbt](http://www.scala-sbt.org/download.html) sbt is a build tool just like maven. It doesn't mean the project is in Scala, the sources are 99.99% clean Java.
+  - OS X: `brew install sbt@1` or
   - Linux: `curl https://bintray.com/sbt/rpm/rpm | sudo tee /etc/yum.repos.d/bintray-sbt-rpm.repo` and `sudo yum install sbt`
 
-## To run:
-
-`sbt run`
-
-## New
-
-`sbt docker:publishLocal`
-
-`docker run -it -p 8080 notifications-monitor:1.0.1-SNAPSHOT`
-
-## To develop (on your machine):
-
 * `sbt compile`
-
 * `sbt test`
+* `sbt run`
 
-## In production:
 
-1. `ssh Your.Name@upp-notifications-monitor.in.ft.com`
-2. Become superuser: `sudo su -`
-3. Navigate to `/opt/notifications-monitor`
-4. `git pull origin master`
-5. Stop the running service: `/etc/init.d/notifications-monitor stop`
-6. `sbt stage`
-7. Start the service: `/etc/init.d/notifications-monitor start`
-7. Check: `/etc/init.d/notifications-monitor status` or `ps aux | grep java`
+## App logic explained
 
-Logs are in `/opt/notifications-monitor/logs`
+todo
