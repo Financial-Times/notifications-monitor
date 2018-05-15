@@ -41,8 +41,8 @@ public class NotificationsMonitor {
         sys = ActorSystem.create("notificationsMonitor");
         logger.info("Starting up...");
         final Config config = ConfigFactory.load(
-                ConfigFactory.parseFile(new File("src/main/resources/application.conf"))
-                        .withFallback(ConfigFactory.parseFile(new File("src/main/resources/.sensitive.conf")))
+                ConfigFactory.parseResources("application.conf")
+                        .withFallback(ConfigFactory.parseResources("sensitive.conf"))
                         .resolve()
         );
         ActorRef pushPullMatcher = sys.actorOf(PairMatcher.props("push", "pull"), "matcherPushPull");

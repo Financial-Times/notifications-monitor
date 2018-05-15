@@ -26,17 +26,4 @@ testOptions in Test := Seq(Tests.Argument(TestFrameworks.JUnit, "-q"))
 
 crossPaths := false
 
-enablePlugins(sbtdocker.DockerPlugin, JavaAppPackaging)
-
-lazy val dockerSettings = Seq(
-  dockerfile in docker := {
-    val appDir: File = stage.value
-    val targetDir = "/notifications-monitor"
-
-    sbtdocker.immutable.Dockerfile.empty
-      .from("openjdk:8-jdk-alpine")
-      .copy(appDir, targetDir)
-      .expose(8080)
-      .entryPoint(s"$targetDir/bin/${executableScriptName.value}")
-  }
-)
+enablePlugins(JavaAppPackaging)
