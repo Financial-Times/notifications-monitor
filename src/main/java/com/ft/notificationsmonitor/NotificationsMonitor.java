@@ -4,6 +4,7 @@ import akka.actor.ActorRef;
 import akka.actor.ActorSystem;
 import akka.actor.Cancellable;
 import akka.http.javadsl.Http;
+import akka.http.javadsl.ServerBinding;
 import com.ft.notificationsmonitor.http.PullHttp;
 import com.ft.notificationsmonitor.http.PushHttp;
 import com.ft.notificationsmonitor.model.HttpConfig;
@@ -15,9 +16,11 @@ import org.slf4j.LoggerFactory;
 import scala.concurrent.duration.Duration;
 import scala.runtime.BoxedUnit;
 
-import java.io.File;
 import java.util.Collections;
+import java.util.concurrent.CompletionStage;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 import static com.ft.notificationsmonitor.PullConnector.REQUEST_SINCE_LAST;
 import static com.ft.notificationsmonitor.PushConnector.CONNECT;
@@ -30,6 +33,7 @@ public class NotificationsMonitor {
     private ActorSystem sys;
     private ActorRef pushConnector;
     private Cancellable pushPullMatcherReport;
+    private CompletionStage<ServerBinding> serverBinding;
 
     public static void main(String[] args) throws Exception {
         NotificationsMonitor monitor = new NotificationsMonitor();
@@ -65,11 +69,19 @@ public class NotificationsMonitor {
         pushPullMatcherReport = sys.scheduler().schedule(Duration.apply(250, TimeUnit.SECONDS),
                 Duration.apply(4, TimeUnit.MINUTES), pushPullMatcher, "Report", sys.dispatcher(), ActorRef.noSender());
         pushConnector.tell(CONNECT, ActorRef.noSender());
+
+        serverBinding = (new HttpServer(sys)).runServer();
+        logger.info("Serving HTTP on 0.0.0.0:8080");
     }
 
     private BoxedUnit shutdown() {
         logger.info("Exiting...");
         pushPullMatcherReport.cancel();
+        try {
+            serverBinding.thenCompose(ServerBinding::unbind).toCompletableFuture().get(1, TimeUnit.SECONDS);
+        } catch (ExecutionException | TimeoutException | InterruptedException ex ) {
+            logger.error("Error while shutting down HTTP server", ex);
+        }
         pushConnector.tell(SHUTDOWN, ActorRef.noSender());
         Http.get(sys).shutdownAllConnectionPools()
                 .whenComplete((s, f) -> sys.terminate());
