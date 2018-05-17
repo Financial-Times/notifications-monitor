@@ -27,9 +27,3 @@ testOptions in Test := Seq(Tests.Argument(TestFrameworks.JUnit, "-q"))
 crossPaths := false
 
 enablePlugins(JavaAppPackaging)
-
-herokuProcessTypes in Compile := Map(
-  "web" -> "target/universal/stage/bin/notifications-monitor -Dhttp.port=8080"
-)
-
-herokuAppName in Compile := "notifications-monitor"
