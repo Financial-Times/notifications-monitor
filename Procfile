@@ -1,1 +1,1 @@
-web: target/universal/stage/bin/notifications-monitor -p 8080
+web: target/universal/stage/bin/notifications-monitor -Dhttp.port=8080
